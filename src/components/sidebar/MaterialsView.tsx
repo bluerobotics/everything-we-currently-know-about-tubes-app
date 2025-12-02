@@ -1,4 +1,4 @@
-import { Box, Edit2, ChevronDown, ChevronRight, Square, CheckSquare, Check } from 'lucide-react'
+import { Box, Edit2, ChevronDown, ChevronRight, Check } from 'lucide-react'
 import { useState } from 'react'
 import { useAppStore, useProjectConfig } from '../../stores/appStore'
 import { MATERIALS, MATERIAL_CATEGORIES, Material } from '../../lib/optimizer'
@@ -87,7 +87,6 @@ export function MaterialsView() {
 
   const currentMaterial = getMaterial()
   const selectedCount = selectedMaterials.length
-  const totalCount = Object.keys(MATERIALS).length
 
   const handleMaterialSelect = (name: string) => {
     setSelectedMaterial(name)

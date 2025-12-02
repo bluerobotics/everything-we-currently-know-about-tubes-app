@@ -1,4 +1,4 @@
-import { useAppStore, useProjectResults, useProjectConfig } from '../stores/appStore'
+import { useProjectResults, useProjectConfig } from '../stores/appStore'
 
 function DetailRow({ label, value, unit = '' }: { label: string; value: string | number; unit?: string }) {
   return (
@@ -15,7 +15,6 @@ function DetailRow({ label, value, unit = '' }: { label: string; value: string |
 export function DetailsPanel() {
   const { results, selectedResultIndex } = useProjectResults()
   const config = useProjectConfig()
-  const { getMaterial } = useAppStore()
 
   if (results.length === 0 || selectedResultIndex === null) {
     return (
@@ -26,7 +25,6 @@ export function DetailsPanel() {
   }
 
   const r = results[selectedResultIndex]
-  const material = getMaterial()
   const showPacking = config.box?.enabled && r.packingCount !== undefined
   const showMaterial = config.selectedMaterial === 'ALL' && r.materialName
 

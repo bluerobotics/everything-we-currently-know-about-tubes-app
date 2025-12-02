@@ -14,7 +14,6 @@ import { CylinderViewer } from './components/CylinderViewer'
 function App() {
   const {
     sidebarVisible,
-    sidebarWidth,
     setSidebarWidth,
     toggleSidebar,
     getMaterial,

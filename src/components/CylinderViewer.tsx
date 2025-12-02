@@ -1,5 +1,5 @@
 import { useRef, useMemo, useState, useEffect } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Environment, PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
 import { useProjectResults, useProjectConfig } from '../stores/appStore'
@@ -19,38 +19,32 @@ const AXIS_COLORS = {
 function ColoredAxes({ size }: { size: number }) {
   return (
     <group>
-      {/* X axis - Pink */}
+      {/* X axis - Blue */}
       <line>
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
-            count={2}
-            array={new Float32Array([0, 0, 0, size, 0, 0])}
-            itemSize={3}
+            args={[new Float32Array([0, 0, 0, size, 0, 0]), 3]}
           />
         </bufferGeometry>
         <lineBasicMaterial color={AXIS_COLORS.x} linewidth={2} />
       </line>
-      {/* Y axis - Violet */}
+      {/* Y axis - Teal */}
       <line>
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
-            count={2}
-            array={new Float32Array([0, 0, 0, 0, size, 0])}
-            itemSize={3}
+            args={[new Float32Array([0, 0, 0, 0, size, 0]), 3]}
           />
         </bufferGeometry>
         <lineBasicMaterial color={AXIS_COLORS.y} linewidth={2} />
       </line>
-      {/* Z axis - Cyan */}
+      {/* Z axis - Lavender */}
       <line>
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
-            count={2}
-            array={new Float32Array([0, 0, 0, 0, 0, size])}
-            itemSize={3}
+            args={[new Float32Array([0, 0, 0, 0, 0, size]), 3]}
           />
         </bufferGeometry>
         <lineBasicMaterial color={AXIS_COLORS.z} linewidth={2} />
@@ -486,7 +480,7 @@ interface CylinderViewerProps {
   onWidthChange?: (width: number) => void
 }
 
-export function CylinderViewer({ width, onWidthChange }: CylinderViewerProps) {
+export function CylinderViewer({ onWidthChange }: CylinderViewerProps) {
   const { results, selectedResultIndex } = useProjectResults()
   const config = useProjectConfig()
   const [showTube, setShowTube] = useState(true)

@@ -485,7 +485,7 @@ export function ResultsTable() {
             )}
           </thead>
           <tbody>
-            {filteredSortedResults.map((r, i) => {
+            {filteredSortedResults.map((r) => {
               const originalIndex = results.findIndex(orig => orig === r)
               
               return (
