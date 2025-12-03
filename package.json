@@ -38,6 +38,7 @@
   "build": {
     "appId": "com.tubes.everything",
     "productName": "Everything We Currently Know About Tubes",
+    "artifactName": "${productName}-${version}-${os}.${ext}",
     "directories": {
       "output": "release"
     },
@@ -45,13 +46,12 @@
       "dist/**/*",
       "dist-electron/**/*"
     ],
+    "publish": null,
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": [
-            "x64"
-          ]
+          "arch": ["x64"]
         }
       ]
     },
@@ -59,10 +59,7 @@
       "target": [
         {
           "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
+          "arch": ["universal"]
         }
       ],
       "category": "public.app-category.utilities"
@@ -73,6 +70,9 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "dmg": {
+      "writeUpdateInfo": false
     }
   }
 }
