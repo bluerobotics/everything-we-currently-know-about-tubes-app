@@ -1,5 +1,5 @@
-import { Ruler, Waves, ArrowDownUp, Box } from 'lucide-react'
-import { useAppStore, useProjectConfig } from '../../stores/appStore'
+import { Ruler, Waves, ArrowDownUp, Box, Layers } from 'lucide-react'
+import { useAppStore, useProjectConfig, EndcapConstraint } from '../../stores/appStore'
 import { depthToPressure, pressureToDepth } from '../../lib/optimizer'
 
 function InputField({
@@ -60,7 +60,10 @@ export function ParametersView() {
     setBoxOrientation,
     setBoxForcedDiameter,
     setBoxForcedLength,
-    setBoxPadding
+    setBoxPadding,
+    setForcedWallThickness,
+    setForcedEndcapThickness,
+    setEndcapConstraint
   } = useAppStore()
 
   const handleDepthChange = (depth: number) => {
@@ -230,6 +233,105 @@ export function ParametersView() {
           </div>
         </div>
 
+        {/* Cylinder Overrides */}
+        <div className="px-4 py-3 border-t border-vsc-border">
+          <div className="flex items-center gap-2 text-sm font-medium mb-4">
+            <Layers size={14} className="text-vsc-accent" />
+            Cylinder Overrides
+          </div>
+          
+          <div className="space-y-3">
+            <div className="text-xs text-vsc-fg-muted mb-2">
+              Force dimensions (leave empty for auto)
+            </div>
+            
+            {/* Diameter & Length */}
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="text-[10px] text-vsc-fg-dim block mb-1">Diameter</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    placeholder="auto"
+                    value={config.box?.forcedDiameterMm || ''}
+                    onChange={(e) => setBoxForcedDiameter(e.target.value ? Number(e.target.value) : undefined)}
+                    className="w-full bg-vsc-input border border-vsc-border rounded px-2 py-1 text-sm"
+                    step={1}
+                    min={1}
+                  />
+                  <span className="text-xs text-vsc-fg-muted">mm</span>
+                </div>
+              </div>
+              <div className="flex-1">
+                <label className="text-[10px] text-vsc-fg-dim block mb-1">Length</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    placeholder="auto"
+                    value={config.box?.forcedLengthMm || ''}
+                    onChange={(e) => setBoxForcedLength(e.target.value ? Number(e.target.value) : undefined)}
+                    className="w-full bg-vsc-input border border-vsc-border rounded px-2 py-1 text-sm"
+                    step={1}
+                    min={1}
+                  />
+                  <span className="text-xs text-vsc-fg-muted">mm</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Wall & Endcap Thickness */}
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="text-[10px] text-vsc-fg-dim block mb-1">Wall</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    placeholder="auto"
+                    value={config.forcedWallThicknessMm ?? ''}
+                    onChange={(e) => setForcedWallThickness(e.target.value ? Number(e.target.value) : undefined)}
+                    className="w-full bg-vsc-input border border-vsc-border rounded px-2 py-1 text-sm"
+                    step={0.1}
+                    min={0.1}
+                  />
+                  <span className="text-xs text-vsc-fg-muted">mm</span>
+                </div>
+              </div>
+              <div className="flex-1">
+                <label className="text-[10px] text-vsc-fg-dim block mb-1">Endcap</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    placeholder="auto"
+                    value={config.forcedEndcapThicknessMm ?? ''}
+                    onChange={(e) => setForcedEndcapThickness(e.target.value ? Number(e.target.value) : undefined)}
+                    className="w-full bg-vsc-input border border-vsc-border rounded px-2 py-1 text-sm"
+                    step={0.1}
+                    min={0.1}
+                  />
+                  <span className="text-xs text-vsc-fg-muted">mm</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="input-group mt-3">
+              <label>Endcap Constraint</label>
+              <select
+                value={config.endcapConstraint}
+                onChange={(e) => setEndcapConstraint(e.target.value as EndcapConstraint)}
+                className="w-full bg-vsc-input border border-vsc-border rounded px-2 py-1 text-sm"
+              >
+                <option value="fixed">Fixed (clamped edges)</option>
+                <option value="floating">Floating (simply supported)</option>
+              </select>
+              <div className="text-[10px] text-vsc-fg-muted mt-1">
+                {config.endcapConstraint === 'fixed' 
+                  ? 'Endcap edges are rigidly fixed to tube wall'
+                  : 'Endcap edges can rotate freely at tube wall'}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Box Packing */}
         <div className="px-4 py-3 border-t border-vsc-border">
           <div className="flex items-center justify-between mb-4">
@@ -305,45 +407,6 @@ export function ParametersView() {
                   <option value="y">Y axis (height)</option>
                   <option value="z">Z axis (depth)</option>
                 </select>
-              </div>
-
-              {/* Forced Cylinder Dimensions */}
-              <div className="border-t border-vsc-border pt-3 mt-3">
-                <div className="text-xs text-vsc-fg-muted mb-2">
-                  Force cylinder size (optional)
-                </div>
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <label className="text-[10px] text-vsc-fg-dim block mb-1">Diameter</label>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        placeholder="auto"
-                        value={config.box?.forcedDiameterMm || ''}
-                        onChange={(e) => setBoxForcedDiameter(e.target.value ? Number(e.target.value) : undefined)}
-                        className="w-full bg-vsc-input border border-vsc-border rounded px-2 py-1 text-sm"
-                        step={1}
-                        min={1}
-                      />
-                      <span className="text-xs text-vsc-fg-muted">mm</span>
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-[10px] text-vsc-fg-dim block mb-1">Length</label>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        placeholder="auto"
-                        value={config.box?.forcedLengthMm || ''}
-                        onChange={(e) => setBoxForcedLength(e.target.value ? Number(e.target.value) : undefined)}
-                        className="w-full bg-vsc-input border border-vsc-border rounded px-2 py-1 text-sm"
-                        step={1}
-                        min={1}
-                      />
-                      <span className="text-xs text-vsc-fg-muted">mm</span>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           )}

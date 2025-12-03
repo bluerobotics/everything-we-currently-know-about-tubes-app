@@ -22,7 +22,8 @@ interface ElectronAPI {
   maximize: () => void
   close: () => void
   isMaximized: () => Promise<boolean>
-  saveConfig: (data: string) => Promise<SaveResult>
+  saveToPath: (data: string, filePath: string) => Promise<SaveResult>
+  saveConfig: (data: string, defaultName?: string) => Promise<SaveResult>
   loadConfig: () => Promise<LoadResult>
   loadRecentFile: (filePath: string) => Promise<LoadResult>
   exportResults: (data: string) => Promise<SaveResult>

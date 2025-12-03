@@ -75,10 +75,10 @@ function SingleCylinder({
 }: CylinderMeshProps) {
   const groupRef = useRef<THREE.Group>(null)
   
-  // Slow auto-rotation (only when not interacted)
+  // Slow auto-rotation around Z axis (vertical in Z-up coordinate system)
   useFrame((_, delta) => {
     if (groupRef.current && autoRotate) {
-      groupRef.current.rotation.y += delta * 0.2
+      groupRef.current.rotation.z += delta * 0.2
     }
   })
 
@@ -134,38 +134,38 @@ function SingleCylinder({
     side: THREE.BackSide
   }), [])
 
-  // Endcap positions
-  const topCapY = tubeLen / 2 + capT / 2
-  const bottomCapY = -tubeLen / 2 - capT / 2
+  // Endcap positions (Z-up: along Z axis)
+  const topCapZ = tubeLen / 2 + capT / 2
+  const bottomCapZ = -tubeLen / 2 - capT / 2
 
   return (
     <group ref={groupRef} position={[0, 0, 0]}>
-      {/* Main tube body */}
+      {/* Main tube body - oriented along Z axis for Z-up coordinate system */}
       {showTube && (
         <>
           <mesh 
             geometry={tubeGeometry} 
             material={tubeMaterial}
-            rotation={[Math.PI / 2, 0, 0]}
-            position={[0, tubeLen / 2, 0]}
+            rotation={[0, 0, 0]}
+            position={[0, 0, -tubeLen / 2]}
           />
-          {/* Inner surface (dark) */}
-          <mesh material={innerMaterial}>
+          {/* Inner surface (dark) - rotated to align with Z axis */}
+          <mesh material={innerMaterial} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[innerR - 0.001, innerR - 0.001, tubeLen, 64, 1, true]} />
           </mesh>
         </>
       )}
 
-      {/* Endcaps - outer diameter matches tube OD */}
+      {/* Endcaps - outer diameter matches tube OD, along Z axis */}
       {showEndcaps && (
         <>
           {/* Top endcap (solid disc at outer diameter) */}
-          <mesh position={[0, topCapY, 0]} material={endcapMaterial}>
+          <mesh position={[0, 0, topCapZ]} rotation={[Math.PI / 2, 0, 0]} material={endcapMaterial}>
             <cylinderGeometry args={[outerR, outerR, capT, 64]} />
           </mesh>
 
           {/* Bottom endcap (solid disc at outer diameter) */}
-          <mesh position={[0, bottomCapY, 0]} material={endcapMaterial}>
+          <mesh position={[0, 0, bottomCapZ]} rotation={[Math.PI / 2, 0, 0]} material={endcapMaterial}>
             <cylinderGeometry args={[outerR, outerR, capT, 64]} />
           </mesh>
         </>
@@ -174,11 +174,11 @@ function SingleCylinder({
       {/* Show tube end rings when tube visible but endcaps hidden */}
       {showTube && !showEndcaps && (
         <>
-          <mesh position={[0, tubeLen / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <mesh position={[0, 0, tubeLen / 2]} rotation={[0, 0, 0]}>
             <ringGeometry args={[innerR, outerR, 64]} />
             <meshPhysicalMaterial color="#4a9eff" metalness={0.1} roughness={0.3} side={THREE.DoubleSide} />
           </mesh>
-          <mesh position={[0, -tubeLen / 2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <mesh position={[0, 0, -tubeLen / 2]} rotation={[0, 0, 0]}>
             <ringGeometry args={[innerR, outerR, 64]} />
             <meshPhysicalMaterial color="#4a9eff" metalness={0.1} roughness={0.3} side={THREE.DoubleSide} />
           </mesh>
@@ -309,9 +309,10 @@ function PackedScene({
 }: PackedSceneProps) {
   const groupRef = useRef<THREE.Group>(null)
   
+  // Auto-rotation around Z axis (vertical in Z-up coordinate system)
   useFrame((_, delta) => {
     if (groupRef.current && autoRotate) {
-      groupRef.current.rotation.y += delta * 0.1
+      groupRef.current.rotation.z += delta * 0.1
     }
   })
 
@@ -333,19 +334,24 @@ function PackedScene({
     const rowSpacing = paddedDiameter * HEX_ROW_SPACING
 
     // Determine packing plane and axis based on orientation
+    // Z-up coordinate system: w=X (width), h=Y (length), d=Z (height)
+    // (heightMm = "Box Length (Y)", depthMm = "Box Height (Z)")
     let packingW: number, packingH: number, axisLen: number
     if (orientation === 'x') {
-      packingW = h
-      packingH = d
-      axisLen = w
+      // Cylinders along X, pack in YZ plane
+      packingW = h  // Y extent (length)
+      packingH = d  // Z extent (height)
+      axisLen = w   // X extent (width)
     } else if (orientation === 'y') {
-      packingW = w
-      packingH = d
-      axisLen = h
+      // Cylinders along Y, pack in XZ plane
+      packingW = w  // X extent (width)
+      packingH = d  // Z extent (height)
+      axisLen = h   // Y extent (length)
     } else {
-      packingW = w
-      packingH = h
-      axisLen = d
+      // Cylinders along Z (vertical), pack in XY plane
+      packingW = w  // X extent (width)
+      packingH = h  // Y extent (length)
+      axisLen = d   // Z extent (height)
     }
 
     const layers = Math.floor(axisLen / length)
@@ -397,7 +403,11 @@ function PackedScene({
 
   return (
     <group ref={groupRef}>
-      {/* Wireframe box */}
+      {/* Wireframe box for Z-up view:
+          - w = widthMm = visual X (horizontal width)
+          - h = heightMm = "Box Length (Y)" = visual Y (horizontal depth) 
+          - d = depthMm = "Box Height (Z)" = visual Z (vertical height)
+          Since Three.js BoxGeometry uses (x, y, z), we put: w→X, h→Y, d→Z */}
       <lineSegments>
         <edgesGeometry args={[new THREE.BoxGeometry(w, h, d)]} />
         <lineBasicMaterial color="#888888" />
@@ -463,6 +473,9 @@ function ControlsWithInteractionDetection({ onInteraction }: { onInteraction: ()
     }
   }, [onInteraction])
 
+  // Z-up coordinate system
+  const upVector = useMemo(() => new THREE.Vector3(0, 0, 1), [])
+
   return (
     <OrbitControls 
       ref={controlsRef}
@@ -471,6 +484,7 @@ function ControlsWithInteractionDetection({ onInteraction }: { onInteraction: ()
       enableRotate={true}
       minDistance={0.5}
       maxDistance={50}
+      up={upVector}
     />
   )
 }
@@ -621,7 +635,7 @@ export function CylinderViewer({ onWidthChange }: CylinderViewerProps) {
         {/* 3D Canvas */}
         <div className="flex-1">
           <Canvas>
-            <PerspectiveCamera makeDefault position={[cameraDistance, cameraDistance * 0.5, cameraDistance]} />
+            <PerspectiveCamera makeDefault position={[cameraDistance, -cameraDistance, cameraDistance * 0.8]} up={[0, 0, 1]} />
             <ControlsWithInteractionDetection onInteraction={handleUserInteraction} />
             
             {/* Lighting */}
@@ -633,8 +647,8 @@ export function CylinderViewer({ onWidthChange }: CylinderViewerProps) {
             {/* Environment for reflections */}
             <Environment preset="city" />
             
-            {/* Grid helper */}
-            <gridHelper args={[10, 20, '#3c3c3c', '#2a2a2a']} position={[0, -3, 0]} />
+            {/* Grid helper - XY plane (floor) for Z-up coordinate system */}
+            <gridHelper args={[10, 20, '#3c3c3c', '#2a2a2a']} rotation={[Math.PI / 2, 0, 0]} position={[0, 0, -3]} />
             
             {viewMode === 'packed' && selectedResult && config.box ? (
               <PackedScene

@@ -307,7 +307,7 @@ export interface OptimizationResult {
   lengthMm: number
   wallThicknessMm: number
   endcapThicknessMm: number
-  wallMethod: 'stress' | 'buckling'
+  wallMethod: 'stress' | 'buckling' | 'forced'
   innerDiameterMm: number
   innerLengthMm: number
   outerVolumeL: number
@@ -318,6 +318,11 @@ export interface OptimizationResult {
   netBuoyancyKg: number
   netBuoyancyN: number
   buoyancyRatio: number
+  // Failure analysis (optional for backwards compatibility with cached results)
+  failureDepthM?: number        // Depth at which failure occurs
+  failurePressureMpa?: number   // Pressure at which failure occurs
+  failureMode?: 'wall-stress' | 'wall-buckling' | 'endcap-stress' | 'endcap-buckling'
+  actualSafetyFactor?: number   // Actual safety factor at operating pressure
   // Packing info (calculated separately if box dimensions provided)
   packingCount?: number
   packingOrientation?: 'x' | 'y' | 'z'
@@ -348,6 +353,8 @@ export interface PackingResult {
   circlesPerLayer: number
 }
 
+export type EndcapConstraint = 'fixed' | 'floating'
+
 export interface OptimizationParams {
   pressureMpa: number
   material: Material
@@ -362,6 +369,10 @@ export interface OptimizationParams {
   lengthStepMm: number
   waterDensity: number
   box?: BoxDimensions
+  // Forced thickness overrides
+  forcedWallThicknessMm?: number
+  forcedEndcapThicknessMm?: number
+  endcapConstraint?: EndcapConstraint
 }
 
 const GRAVITY = 9.81
@@ -534,14 +545,17 @@ function calcWallThickness(
   }
 
   // Method 2: Buckling-based (Von Mises for external pressure)
-  let tBuckle = D * Math.pow((P * (1 - nu ** 2) * safetyFactor) / (2 * E), 1 / 3)
-
-  // Length factor for shorter cylinders
+  // For short cylinders (L/D < 5), they're more resistant to buckling
+  // The correction factor reduces required thickness, but since t appears cubed in P formula,
+  // we apply the factor inside the cube root
   const lengthRatio = L / D
+  let lengthFactor = 1.0
   if (lengthRatio < 5) {
-    const lengthFactor = Math.max(0.7, Math.sqrt(lengthRatio / 5))
-    tBuckle *= lengthFactor
+    lengthFactor = Math.max(0.7, Math.sqrt(lengthRatio / 5))
   }
+  
+  // Include lengthFactor in the cube root so P_fail = P * SF correctly
+  const tBuckle = D * Math.pow((P * (1 - nu ** 2) * safetyFactor * lengthFactor) / (2 * E), 1 / 3)
 
   if (tBuckle > tStress) {
     return { thickness: tBuckle, method: 'buckling' }
@@ -551,12 +565,14 @@ function calcWallThickness(
 
 /**
  * Calculate minimum thickness for flat circular endcap
+ * @param constraint - 'fixed' (clamped edges) or 'floating' (simply supported)
  */
 function calcEndcapThickness(
   pressureMpa: number,
   innerDiameterMm: number,
   material: Material,
-  safetyFactor: number
+  safetyFactor: number,
+  constraint: EndcapConstraint = 'fixed'
 ): number {
   if (pressureMpa <= 0) {
     return 1.0
@@ -567,11 +583,24 @@ function calcEndcapThickness(
   const sigmaAllow = material.yieldStrength / safetyFactor
   const E = material.elasticModulus
 
-  // Stress-based (clamped circular plate)
-  const tRequired = Math.sqrt((3 * P * R ** 2) / (4 * sigmaAllow))
+  // Stress-based calculation depends on constraint type
+  // Fixed (clamped): edges cannot rotate - lower stress coefficient
+  // Floating (simply supported): edges can rotate - higher stress coefficient
+  let tRequired: number
+  if (constraint === 'fixed') {
+    // Clamped circular plate: σ = (3/4) * P * R² / t²
+    tRequired = Math.sqrt((3 * P * R ** 2) / (4 * sigmaAllow))
+  } else {
+    // Simply supported circular plate: σ = (3/8) * (3 + ν) * P * R² / t²
+    // For most materials ν ≈ 0.3-0.4, so (3 + ν) ≈ 3.3-3.4
+    // This gives approximately 1.5x higher stress than clamped
+    const nu = material.poissonsRatio
+    tRequired = Math.sqrt((3 * (3 + nu) * P * R ** 2) / (8 * sigmaAllow))
+  }
 
-  // Buckling-based
-  const tBuckle = R * Math.pow((P * safetyFactor) / (4.2 * E), 1 / 3)
+  // Buckling-based (applies to both constraints, slightly different coefficients)
+  const bucklingCoeff = constraint === 'fixed' ? 4.2 : 3.6
+  const tBuckle = R * Math.pow((P * safetyFactor) / (bucklingCoeff * E), 1 / 3)
 
   return Math.max(tRequired, tBuckle, 1.0)
 }
@@ -629,6 +658,80 @@ function calcBuoyancy(
 }
 
 /**
+ * Calculate failure pressure and mode for a cylinder
+ * Returns the lowest failure pressure and its mode
+ */
+function calcFailure(
+  outerDiameterMm: number,
+  lengthMm: number,
+  wallThicknessMm: number,
+  endcapThicknessMm: number,
+  innerDiameterMm: number,
+  material: Material,
+  endcapConstraint: EndcapConstraint = 'fixed'
+): {
+  failurePressureMpa: number
+  failureMode: 'wall-stress' | 'wall-buckling' | 'endcap-stress' | 'endcap-buckling'
+} {
+  const D = outerDiameterMm
+  const L = lengthMm
+  const t = wallThicknessMm
+  const tEnd = endcapThicknessMm
+  const Di = innerDiameterMm
+  const E = material.elasticModulus
+  const nu = material.poissonsRatio
+  const sigmaY = material.yieldStrength
+
+  const Ro = D / 2
+  const Ri = Di / 2
+
+  // Wall stress failure (thick wall Lame equation, solved for P)
+  // σ = P * (Ro² + Ri²) / (Ro² - Ri²)
+  // P = σ * (Ro² - Ri²) / (Ro² + Ri²)
+  const pWallStress = sigmaY * (Ro ** 2 - Ri ** 2) / (Ro ** 2 + Ri ** 2)
+
+  // Wall buckling failure (Von Mises for external pressure)
+  // Base formula: P = 2 * E * (t/D)³ / (1 - ν²)
+  // Short cylinders are stronger - divide by lengthFactor to get higher failure pressure
+  const lengthRatio = L / D
+  let lengthFactor = 1.0
+  if (lengthRatio < 5) {
+    lengthFactor = Math.max(0.7, Math.sqrt(lengthRatio / 5))
+  }
+  const pWallBuckle = 2 * E * Math.pow(t / D, 3) / (1 - nu ** 2) / lengthFactor
+
+  // Endcap stress failure
+  // For fixed: σ = (3/4) * P * R² / t²  =>  P = (4/3) * σ * t² / R²
+  // For floating: σ = (3/8) * (3+ν) * P * R² / t²  =>  P = (8/3) * σ * t² / ((3+ν) * R²)
+  let pEndcapStress: number
+  if (endcapConstraint === 'fixed') {
+    pEndcapStress = (4 / 3) * sigmaY * tEnd ** 2 / Ri ** 2
+  } else {
+    pEndcapStress = (8 / 3) * sigmaY * tEnd ** 2 / ((3 + nu) * Ri ** 2)
+  }
+
+  // Endcap buckling failure
+  // t = R * (P / (k * E))^(1/3)  =>  P = k * E * (t/R)³
+  const bucklingCoeff = endcapConstraint === 'fixed' ? 4.2 : 3.6
+  const pEndcapBuckle = bucklingCoeff * E * Math.pow(tEnd / Ri, 3)
+
+  // Find minimum failure pressure and mode
+  const failures: { pressure: number; mode: 'wall-stress' | 'wall-buckling' | 'endcap-stress' | 'endcap-buckling' }[] = [
+    { pressure: pWallStress, mode: 'wall-stress' },
+    { pressure: pWallBuckle, mode: 'wall-buckling' },
+    { pressure: pEndcapStress, mode: 'endcap-stress' },
+    { pressure: pEndcapBuckle, mode: 'endcap-buckling' }
+  ]
+
+  const minFailure = failures.reduce((min, f) => f.pressure < min.pressure ? f : min)
+
+  return {
+    failurePressureMpa: minFailure.pressure,
+    failureMode: minFailure.mode
+  }
+}
+
+/**
  * Optimize for a single material
  */
 function optimizeForMaterial(
@@ -651,14 +754,24 @@ function optimizeForMaterial(
   while (d <= maxD) {
     let L = minL
     while (L <= maxL) {
-      // Calculate wall thickness
-      const { thickness: wallT, method } = calcWallThickness(
-        params.pressureMpa,
-        d,
-        L,
-        material,
-        params.safetyFactor
-      )
+      // Calculate or use forced wall thickness
+      let wallT: number
+      let method: 'stress' | 'buckling' | 'forced'
+      
+      if (params.forcedWallThicknessMm !== undefined) {
+        wallT = params.forcedWallThicknessMm
+        method = 'forced'
+      } else {
+        const calc = calcWallThickness(
+          params.pressureMpa,
+          d,
+          L,
+          material,
+          params.safetyFactor
+        )
+        wallT = calc.thickness
+        method = calc.method
+      }
 
       // Check feasibility
       const innerD = d - 2 * wallT
@@ -667,8 +780,19 @@ function optimizeForMaterial(
         continue
       }
 
-      // Calculate endcap thickness
-      const endcapT = calcEndcapThickness(params.pressureMpa, innerD, material, params.safetyFactor)
+      // Calculate or use forced endcap thickness
+      let endcapT: number
+      if (params.forcedEndcapThicknessMm !== undefined) {
+        endcapT = params.forcedEndcapThicknessMm
+      } else {
+        endcapT = calcEndcapThickness(
+          params.pressureMpa, 
+          innerD, 
+          material, 
+          params.safetyFactor,
+          params.endcapConstraint || 'fixed'
+        )
+      }
 
       // Check if endcaps fit
       if (2 * endcapT >= L * 0.8) {
@@ -678,6 +802,11 @@ function optimizeForMaterial(
 
       // Calculate buoyancy
       const buoyancy = calcBuoyancy(d, L, wallT, endcapT, material, params.waterDensity)
+
+      // Calculate failure analysis
+      const failure = calcFailure(d, L, wallT, endcapT, innerD, material, params.endcapConstraint || 'fixed')
+      const failureDepthM = pressureToDepth(failure.failurePressureMpa, params.waterDensity)
+      const actualSafetyFactor = params.pressureMpa > 0 ? failure.failurePressureMpa / params.pressureMpa : Infinity
 
       if (buoyancy.netBuoyancyKg > 0) {
         // Calculate packing if box dimensions provided
@@ -716,6 +845,10 @@ function optimizeForMaterial(
               innerDiameterMm: innerD,
               innerLengthMm: L - 2 * endcapT,
               ...buoyancy,
+              failureDepthM,
+              failurePressureMpa: failure.failurePressureMpa,
+              failureMode: failure.failureMode,
+              actualSafetyFactor,
               packingCount: count,
               packingOrientation: packing.orientation,
               packingLayers: packing.layersAlongAxis,
@@ -739,7 +872,11 @@ function optimizeForMaterial(
             wallMethod: method,
             innerDiameterMm: innerD,
             innerLengthMm: L - 2 * endcapT,
-            ...buoyancy
+            ...buoyancy,
+            failureDepthM,
+            failurePressureMpa: failure.failurePressureMpa,
+            failureMode: failure.failureMode,
+            actualSafetyFactor
           }
           results.push(result)
         }

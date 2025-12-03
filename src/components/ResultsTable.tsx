@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useAppStore, useProjectResults, useProjectConfig, ColumnWidths } from '../stores/appStore'
 import { ChevronUp, ChevronDown, Filter, X } from 'lucide-react'
 
-type SortKey = 'rank' | 'material' | 'diameter' | 'length' | 'wall' | 'cap' | 'mass' | 'buoyancy' | 'ratio' | 'pack' | 'totalMass' | 'totalBuoy'
+type SortKey = 'rank' | 'material' | 'diameter' | 'length' | 'wall' | 'cap' | 'mass' | 'buoyancy' | 'ratio' | 'failDepth' | 'failMode' | 'safety' | 'pack' | 'totalMass' | 'totalBuoy'
 type SortDir = 'asc' | 'desc'
 type ColumnKey = keyof ColumnWidths
 
@@ -145,12 +145,19 @@ export function ResultsTable() {
 
     // Sort
     const sorted = [...filtered].sort((a, b) => {
+      // String comparisons
       if (sortKey === 'material') {
         const aVal = a.materialKey || ''
         const bVal = b.materialKey || ''
         return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal)
       }
+      if (sortKey === 'failMode') {
+        const aVal = a.failureMode ?? ''
+        const bVal = b.failureMode ?? ''
+        return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal)
+      }
       
+      // Numeric comparisons
       let aVal: number, bVal: number
       switch (sortKey) {
         case 'rank': aVal = a.rank; bVal = b.rank; break
@@ -161,6 +168,8 @@ export function ResultsTable() {
         case 'mass': aVal = a.massKg; bVal = b.massKg; break
         case 'buoyancy': aVal = a.netBuoyancyKg; bVal = b.netBuoyancyKg; break
         case 'ratio': aVal = a.buoyancyRatio; bVal = b.buoyancyRatio; break
+        case 'failDepth': aVal = a.failureDepthM ?? 0; bVal = b.failureDepthM ?? 0; break
+        case 'safety': aVal = a.actualSafetyFactor ?? 0; bVal = b.actualSafetyFactor ?? 0; break
         case 'pack': aVal = a.packingCount || 0; bVal = b.packingCount || 0; break
         case 'totalMass': aVal = a.totalMassKg || 0; bVal = b.totalMassKg || 0; break
         case 'totalBuoy': aVal = a.totalBuoyancyKg || 0; bVal = b.totalBuoyancyKg || 0; break
@@ -206,44 +215,6 @@ export function ResultsTable() {
 
   const hasFilters = Object.values(filters).some(v => v !== undefined && v !== '')
 
-  // Helper for filter inputs
-  const FilterInput = ({ 
-    filterKey, 
-    placeholder,
-    width = 'w-16'
-  }: { 
-    filterKey: keyof FilterState
-    placeholder: string
-    width?: string
-  }) => (
-    <input
-      type="number"
-      placeholder={placeholder}
-      value={filters[filterKey] ?? ''}
-      onChange={e => setFilters(f => ({ 
-        ...f, 
-        [filterKey]: e.target.value ? Number(e.target.value) : undefined 
-      }))}
-      className={`${width} px-1 py-0.5 bg-vsc-input border border-vsc-border rounded text-[10px]`}
-    />
-  )
-
-  if (results.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-vsc-fg-dim">
-        <div className="text-center">
-          <p className="text-lg mb-2">No results yet</p>
-          <p className="text-sm">Configure parameters and click "Run Optimization"</p>
-        </div>
-      </div>
-    )
-  }
-
-  const formatMass = (kg: number) => {
-    if (kg >= 1) return `${kg.toFixed(2)}kg`
-    return `${(kg * 1000).toFixed(0)}g`
-  }
-
   // Calculate min/max for conditional formatting
   const { minPack, maxPack, minTotalBuoy, maxTotalBuoy } = useMemo(() => {
     if (!showPacking || filteredSortedResults.length === 0) {
@@ -260,21 +231,6 @@ export function ResultsTable() {
       maxTotalBuoy: Math.max(...buoys)
     }
   }, [filteredSortedResults, showPacking])
-
-  // Get color for conditional formatting (0 = red, 1 = green)
-  const getGradientColor = (value: number, min: number, max: number, invert: boolean = false) => {
-    if (max === min) return 'inherit'
-    
-    let ratio = (value - min) / (max - min)
-    if (invert) ratio = 1 - ratio
-    
-    // Interpolate from red (0) through yellow (0.5) to green (1)
-    const r = ratio < 0.5 ? 255 : Math.round(255 * (1 - ratio) * 2)
-    const g = ratio > 0.5 ? 255 : Math.round(255 * ratio * 2)
-    const b = 50
-    
-    return `rgb(${r}, ${g}, ${b})`
-  }
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -319,6 +275,60 @@ export function ResultsTable() {
       selectedRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
     }
   }, [selectedResultIndex])
+
+  // Helper for filter inputs
+  const FilterInput = ({ 
+    filterKey, 
+    placeholder,
+    width = 'w-16'
+  }: { 
+    filterKey: keyof FilterState
+    placeholder: string
+    width?: string
+  }) => (
+    <input
+      type="number"
+      placeholder={placeholder}
+      value={filters[filterKey] ?? ''}
+      onChange={e => setFilters(f => ({ 
+        ...f, 
+        [filterKey]: e.target.value ? Number(e.target.value) : undefined 
+      }))}
+      className={`${width} px-1 py-0.5 bg-vsc-input border border-vsc-border rounded text-[10px]`}
+    />
+  )
+
+  // Get color for conditional formatting (0 = red, 1 = green)
+  const getGradientColor = (value: number, min: number, max: number, invert: boolean = false) => {
+    if (max === min) return 'inherit'
+    
+    let ratio = (value - min) / (max - min)
+    if (invert) ratio = 1 - ratio
+    
+    // Interpolate from red (0) through yellow (0.5) to green (1)
+    const r = ratio < 0.5 ? 255 : Math.round(255 * (1 - ratio) * 2)
+    const g = ratio > 0.5 ? 255 : Math.round(255 * ratio * 2)
+    const b = 50
+    
+    return `rgb(${r}, ${g}, ${b})`
+  }
+
+  const formatMass = (kg: number) => {
+    if (kg >= 1) return `${kg.toFixed(2)}kg`
+    return `${(kg * 1000).toFixed(0)}g`
+  }
+
+  // Early return AFTER all hooks
+  if (results.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-vsc-fg-dim">
+        <div className="text-center">
+          <p className="text-lg mb-2">No results yet</p>
+          <p className="text-sm">Configure parameters and click "Run Optimization"</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div 
@@ -368,6 +378,9 @@ export function ResultsTable() {
               <SortHeader label="Mass" sortKeyName="mass" columnKey="mass" />
               <SortHeader label="Buoy" sortKeyName="buoyancy" columnKey="buoyancy" />
               <SortHeader label="Ratio" sortKeyName="ratio" columnKey="ratio" />
+              <SortHeader label="Fail@" sortKeyName="failDepth" columnKey="failDepth" />
+              <SortHeader label="Mode" sortKeyName="failMode" columnKey="failMode" />
+              <SortHeader label="SF" sortKeyName="safety" columnKey="safety" />
               {showPacking && (
                 <>
                   <SortHeader label="Tot.Mass" sortKeyName="totalMass" columnKey="totalMass" />
@@ -458,6 +471,9 @@ export function ResultsTable() {
                     <FilterInput filterKey="maxRatio" placeholder="max" />
                   </div>
                 </th>
+                <th></th>
+                <th></th>
+                <th></th>
                 {showPacking && (
                   <>
                     <th className="px-1 py-1">
@@ -507,6 +523,18 @@ export function ResultsTable() {
                   <td>{(r.massKg * 1000).toFixed(0)}g</td>
                   <td className="text-vsc-success">{(r.netBuoyancyKg * 1000).toFixed(0)}g</td>
                   <td>{r.buoyancyRatio.toFixed(2)}</td>
+                  <td className={(r.actualSafetyFactor ?? 0) < 1.5 ? 'text-vsc-error' : (r.actualSafetyFactor ?? 0) < 2 ? 'text-vsc-warning' : ''}>
+                    {r.failureDepthM != null ? `${r.failureDepthM.toFixed(0)}m` : '-'}
+                  </td>
+                  <td className="text-[10px] text-vsc-fg-dim" title={r.failureMode || ''}>
+                    {r.failureMode === 'wall-stress' ? 'tube radial' :
+                     r.failureMode === 'wall-buckling' ? 'tube buckling' :
+                     r.failureMode === 'endcap-stress' ? 'endcap stress' :
+                     r.failureMode === 'endcap-buckling' ? 'endcap buckling' : '-'}
+                  </td>
+                  <td className={(r.actualSafetyFactor ?? 0) < 1.5 ? 'text-vsc-error font-bold' : (r.actualSafetyFactor ?? 0) < 2 ? 'text-vsc-warning' : 'text-vsc-success'}>
+                    {r.actualSafetyFactor == null ? '-' : r.actualSafetyFactor === Infinity ? '∞' : `${r.actualSafetyFactor.toFixed(1)}×`}
+                  </td>
                   {showPacking && (
                     <>
                       <td>{formatMass(r.totalMassKg || 0)}</td>

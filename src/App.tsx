@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { Play } from 'lucide-react'
 import { useAppStore, useProjectConfig, useProjectResults, SavedProject } from './stores/appStore'
 import { optimize, depthToPressure } from './lib/optimizer'
@@ -26,7 +26,10 @@ function App() {
     getActiveProject,
     newProject,
     addRecentFile,
-    getSelectedMaterialKeys
+    getSelectedMaterialKeys,
+    autoSaveEnabled,
+    projects,
+    activeProjectId
   } = useAppStore()
   
   const config = useProjectConfig()
@@ -35,6 +38,7 @@ function App() {
   const [isResizing, setIsResizing] = useState(false)
   const [statusMessage, setStatusMessage] = useState('')
   const [viewerWidth, setViewerWidth] = useState(450) // Default wider viewer
+  const autoSaveTimerRef = useRef<number | null>(null)
 
   // Handle sidebar resize
   useEffect(() => {
@@ -64,14 +68,15 @@ function App() {
     }
   }, [isResizing, setSidebarWidth])
 
-  // Save config handler
-  const handleSaveConfig = async () => {
+  // Save config handler - saves to existing path if available
+  const handleSaveConfig = useCallback(async () => {
+    const project = getActiveProject()
     const projectData = exportProject()
     if (!projectData) return
     
     if (!window.electronAPI) {
       // Fallback for browser - download as file
-      const fileName = `${projectData.name.replace(/[^a-z0-9]/gi, '-')}.buoy.json`
+      const fileName = `${projectData.name.replace(/[^a-z0-9]/gi, '-')}.tube`
       const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -85,13 +90,75 @@ function App() {
       return
     }
 
-    const result = await window.electronAPI.saveConfig(JSON.stringify(projectData, null, 2))
+    // If project has existing path, save directly to that path
+    if (project?.filePath) {
+      const result = await window.electronAPI.saveToPath(JSON.stringify(projectData, null, 2), project.filePath)
+      if (result.success) {
+        markProjectSaved(project.filePath)
+        setStatusMessage(`Saved to ${project.filePath}`)
+        setTimeout(() => setStatusMessage(''), 3000)
+      }
+    } else {
+      // Otherwise show save dialog
+      const result = await window.electronAPI.saveConfig(JSON.stringify(projectData, null, 2), `${projectData.name}.tube`)
+      if (result.success && result.filePath) {
+        markProjectSaved(result.filePath)
+        setStatusMessage(`Saved to ${result.filePath}`)
+        setTimeout(() => setStatusMessage(''), 3000)
+      }
+    }
+  }, [exportProject, markProjectSaved, getActiveProject])
+
+  // Save As... handler - always shows dialog
+  const handleSaveConfigAs = useCallback(async () => {
+    const projectData = exportProject()
+    if (!projectData) return
+    
+    if (!window.electronAPI) {
+      // Fallback for browser - same as regular save
+      const fileName = `${projectData.name.replace(/[^a-z0-9]/gi, '-')}.tube`
+      const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = fileName
+      a.click()
+      URL.revokeObjectURL(url)
+      markProjectSaved(fileName)
+      setStatusMessage('Project downloaded')
+      setTimeout(() => setStatusMessage(''), 3000)
+      return
+    }
+
+    const result = await window.electronAPI.saveConfig(JSON.stringify(projectData, null, 2), `${projectData.name}.tube`)
     if (result.success && result.filePath) {
       markProjectSaved(result.filePath)
       setStatusMessage(`Saved to ${result.filePath}`)
       setTimeout(() => setStatusMessage(''), 3000)
     }
-  }
+  }, [exportProject, markProjectSaved])
+
+  // Autosave - only saves if project has existing filePath (has been saved before)
+  const autoSave = useCallback(async () => {
+    const project = getActiveProject()
+    if (!project || !project.modified || !project.filePath) return
+    if (!window.electronAPI) return
+    
+    const projectData = exportProject()
+    if (!projectData) return
+
+    // Save directly to existing path
+    try {
+      const result = await window.electronAPI.saveToPath(JSON.stringify(projectData, null, 2), project.filePath)
+      if (result.success) {
+        markProjectSaved(project.filePath)
+        setStatusMessage('Autosaved')
+        setTimeout(() => setStatusMessage(''), 2000)
+      }
+    } catch {
+      // Silent fail for autosave
+    }
+  }, [getActiveProject, exportProject, markProjectSaved])
 
   // Load config handler
   const handleLoadConfig = async () => {
@@ -99,7 +166,7 @@ function App() {
       // Fallback for browser - use file input
       const input = document.createElement('input')
       input.type = 'file'
-      input.accept = '.json,.buoy.json'
+      input.accept = '.tube,.json'
       input.onchange = async (e) => {
         const file = (e.target as HTMLInputElement).files?.[0]
         if (file) {
@@ -191,7 +258,7 @@ function App() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'buoyancy-results.csv'
+      a.download = 'tubes-results.csv'
       a.click()
       URL.revokeObjectURL(url)
       setStatusMessage('Results downloaded')
@@ -230,6 +297,30 @@ function App() {
     return cleanup
   }, [toggleSidebar])
 
+  // Autosave effect - debounced save when project is modified
+  useEffect(() => {
+    const project = projects.find(p => p.id === activeProjectId)
+    if (!autoSaveEnabled || !project?.modified || !project?.filePath) {
+      return
+    }
+
+    // Clear any existing timer
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current)
+    }
+
+    // Set a new timer for autosave (2 second debounce)
+    autoSaveTimerRef.current = window.setTimeout(() => {
+      autoSave()
+    }, 2000)
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+      }
+    }
+  }, [autoSaveEnabled, projects, activeProjectId, autoSave])
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -245,7 +336,11 @@ function App() {
             break
           case 's':
             e.preventDefault()
-            handleSaveConfig()
+            if (e.shiftKey) {
+              handleSaveConfigAs()
+            } else {
+              handleSaveConfig()
+            }
             break
           case 'e':
             e.preventDefault()
@@ -261,7 +356,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [toggleSidebar, results])
+  }, [toggleSidebar, results, handleSaveConfig, handleSaveConfigAs, newProject])
 
   // Run optimization
   const runOptimization = () => {
@@ -287,7 +382,10 @@ function App() {
         diameterStepMm: config.diameterStepMm,
         lengthStepMm: config.lengthStepMm,
         waterDensity: config.waterDensity,
-        box: config.box
+        box: config.box,
+        forcedWallThicknessMm: config.forcedWallThicknessMm,
+        forcedEndcapThicknessMm: config.forcedEndcapThicknessMm,
+        endcapConstraint: config.endcapConstraint
       })
 
       const selectedCount = getSelectedMaterialKeys().length
@@ -304,6 +402,7 @@ function App() {
         onNew={newProject}
         onOpen={handleLoadConfig}
         onSave={handleSaveConfig}
+        onSaveAs={handleSaveConfigAs}
         onExport={handleExportResults}
         onToggleSidebar={toggleSidebar}
         onOpenRecent={handleOpenRecent}
@@ -330,7 +429,7 @@ function App() {
           {/* Toolbar */}
           <div className="h-10 bg-vsc-bg-dark border-b border-vsc-border flex items-center justify-between px-4 flex-shrink-0">
             <div className="text-sm text-vsc-fg-dim">
-              {statusMessage || 'Optimize cylinder dimensions for maximum buoyancy'}
+              {statusMessage || 'Everything we currently know about tubes'}
             </div>
             <button
               onClick={runOptimization}

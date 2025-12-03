@@ -25,7 +25,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isMaximized: () => ipcRenderer.invoke('window:is-maximized'),
 
   // File operations
-  saveConfig: (data: string) => ipcRenderer.invoke('dialog:save-config', data),
+  saveToPath: (data: string, filePath: string) => ipcRenderer.invoke('dialog:save-to-path', data, filePath),
+  saveConfig: (data: string, defaultName?: string) => ipcRenderer.invoke('dialog:save-config', data, defaultName),
   loadConfig: () => ipcRenderer.invoke('dialog:load-config'),
   loadRecentFile: (filePath: string) => ipcRenderer.invoke('dialog:load-recent-file', filePath),
   exportResults: (data: string) => ipcRenderer.invoke('dialog:export-results', data),
@@ -60,7 +61,8 @@ declare global {
       maximize: () => void
       close: () => void
       isMaximized: () => Promise<boolean>
-      saveConfig: (data: string) => Promise<SaveResult>
+      saveToPath: (data: string, filePath: string) => Promise<SaveResult>
+      saveConfig: (data: string, defaultName?: string) => Promise<SaveResult>
       loadConfig: () => Promise<LoadResult>
       loadRecentFile: (filePath: string) => Promise<LoadResult>
       exportResults: (data: string) => Promise<SaveResult>

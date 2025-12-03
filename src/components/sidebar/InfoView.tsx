@@ -11,9 +11,10 @@ export function InfoView() {
             About
           </div>
           <p className="text-sm text-vsc-fg-dim leading-relaxed">
-            This tool optimizes cylindrical pressure vessels for maximum buoyancy
-            under external hydrostatic pressure. It calculates wall and endcap
-            thicknesses using thin/thick wall theory and flat plate equations.
+            Everything We Currently Know About Tubes — a tool for optimizing
+            cylindrical pressure vessels for maximum buoyancy under external 
+            hydrostatic pressure. Calculates wall and endcap thicknesses using
+            thin/thick wall theory and flat plate equations.
           </p>
         </div>
 

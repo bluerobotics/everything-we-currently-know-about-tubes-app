@@ -4,6 +4,8 @@ import { Material, MATERIALS, MATERIAL_CATEGORIES, OptimizationResult, BoxDimens
 
 export type SidebarView = 'parameters' | 'materials' | 'info'
 
+export type EndcapConstraint = 'fixed' | 'floating'
+
 export interface ProjectConfig {
   depthM: number
   pressureMpa: number
@@ -19,6 +21,10 @@ export interface ProjectConfig {
   selectedMaterial: string
   customMaterial: Material | null
   box: BoxDimensions
+  // Forced thickness overrides (undefined = auto-calculate)
+  forcedWallThicknessMm?: number
+  forcedEndcapThicknessMm?: number
+  endcapConstraint: EndcapConstraint
 }
 
 export interface Project {
@@ -61,7 +67,10 @@ const defaultConfig: ProjectConfig = {
     maxCount: 0,
     orientation: 'all' as const,
     paddingMm: 0
-  }
+  },
+  forcedWallThicknessMm: undefined,
+  forcedEndcapThicknessMm: undefined,
+  endcapConstraint: 'fixed'
 }
 
 function createProject(name: string = 'Untitled'): Project {
@@ -85,6 +94,9 @@ export interface ColumnWidths {
   mass: number
   buoyancy: number
   ratio: number
+  failDepth: number
+  failMode: number
+  safety: number
   totalMass: number
   pack: number
   axis: number
@@ -104,6 +116,9 @@ interface AppState {
   
   // Recent files
   recentFiles: string[]
+  
+  // Autosave
+  autoSaveEnabled: boolean
   
   // Material selection (for "Compare Selected")
   selectedMaterials: string[]
@@ -146,6 +161,9 @@ interface AppState {
   setBoxForcedDiameter: (val: number | undefined) => void
   setBoxForcedLength: (val: number | undefined) => void
   setBoxPadding: (val: number) => void
+  setForcedWallThickness: (val: number | undefined) => void
+  setForcedEndcapThickness: (val: number | undefined) => void
+  setEndcapConstraint: (val: EndcapConstraint) => void
   
   // Actions - Results
   setResults: (results: OptimizationResult[]) => void
@@ -169,6 +187,9 @@ interface AppState {
   selectAllMaterials: () => void
   selectNoMaterials: () => void
   getSelectedMaterialKeys: () => string[]
+  
+  // Autosave actions
+  setAutoSaveEnabled: (enabled: boolean) => void
 }
 
 export const useAppStore = create<AppState>()(
@@ -208,6 +229,9 @@ export const useAppStore = create<AppState>()(
           mass: 70,
           buoyancy: 70,
           ratio: 60,
+          failDepth: 70,
+          failMode: 90,
+          safety: 60,
           totalMass: 80,
           pack: 50,
           axis: 40,
@@ -218,6 +242,8 @@ export const useAppStore = create<AppState>()(
         activeProjectId: initialProject.id,
         
         recentFiles: [],
+        
+        autoSaveEnabled: true,
         
         selectedMaterials: allMaterialKeys,
         
@@ -287,13 +313,13 @@ export const useAppStore = create<AppState>()(
           config: { ...p.config, box: { ...defaultConfig.box, ...p.config.box, enabled } } 
         })),
         setBoxWidth: (val) => updateActiveProject(p => ({ 
-          config: { ...p.config, box: { ...defaultConfig.box, ...p.config.box, widthMm: val } } 
+          config: { ...p.config, box: { ...defaultConfig.box, ...p.config.box, widthMm: Math.min(val, 1000) } } 
         })),
         setBoxHeight: (val) => updateActiveProject(p => ({ 
-          config: { ...p.config, box: { ...defaultConfig.box, ...p.config.box, heightMm: val } } 
+          config: { ...p.config, box: { ...defaultConfig.box, ...p.config.box, heightMm: Math.min(val, 1000) } } 
         })),
         setBoxDepth: (val) => updateActiveProject(p => ({ 
-          config: { ...p.config, box: { ...defaultConfig.box, ...p.config.box, depthMm: val } } 
+          config: { ...p.config, box: { ...defaultConfig.box, ...p.config.box, depthMm: Math.min(val, 1000) } } 
         })),
         setBoxMaxCount: (val) => updateActiveProject(p => ({ 
           config: { ...p.config, box: { ...defaultConfig.box, ...p.config.box, maxCount: val } } 
@@ -309,6 +335,15 @@ export const useAppStore = create<AppState>()(
         })),
         setBoxPadding: (val) => updateActiveProject(p => ({ 
           config: { ...p.config, box: { ...defaultConfig.box, ...p.config.box, paddingMm: val } } 
+        })),
+        setForcedWallThickness: (val) => updateActiveProject(p => ({ 
+          config: { ...p.config, forcedWallThicknessMm: val } 
+        })),
+        setForcedEndcapThickness: (val) => updateActiveProject(p => ({ 
+          config: { ...p.config, forcedEndcapThicknessMm: val } 
+        })),
+        setEndcapConstraint: (val) => updateActiveProject(p => ({ 
+          config: { ...p.config, endcapConstraint: val } 
         })),
         
         // Actions - Results
@@ -352,7 +387,7 @@ export const useAppStore = create<AppState>()(
         importProject: (saved, filePath) => {
           // Use filename from path (not the name stored inside the JSON)
           const fileName = filePath 
-            ? filePath.split(/[/\\]/).pop()?.replace(/\.(buoy\.)?json$/i, '') || saved.name || 'Imported'
+            ? filePath.split(/[/\\]/).pop()?.replace(/\.(tube|buoy\.json|json)$/i, '') || saved.name || 'Imported'
             : saved.name || 'Imported'
           
           const newProj: Project = {
@@ -374,7 +409,7 @@ export const useAppStore = create<AppState>()(
         markProjectSaved: (filePath) => {
           const { projects, activeProjectId, recentFiles } = get()
           // Extract filename without extension for the tab name
-          const fileName = filePath.split(/[/\\]/).pop()?.replace(/\.(buoy\.)?json$/i, '') || 'Untitled'
+          const fileName = filePath.split(/[/\\]/).pop()?.replace(/\.(tube|buoy\.json|json)$/i, '') || 'Untitled'
           
           // Add to recent files (at the start, remove duplicates, limit to 10)
           const newRecentFiles = [filePath, ...recentFiles.filter(f => f !== filePath)].slice(0, 10)
@@ -426,11 +461,14 @@ export const useAppStore = create<AppState>()(
         
         selectNoMaterials: () => set({ selectedMaterials: [] }),
         
-        getSelectedMaterialKeys: () => get().selectedMaterials
+        getSelectedMaterialKeys: () => get().selectedMaterials,
+        
+        // Autosave actions
+        setAutoSaveEnabled: (enabled) => set({ autoSaveEnabled: enabled })
       }
     },
     {
-      name: 'buoyancy-optimizer-storage',
+      name: 'tubes-app-storage',
       partialize: (state) => ({
         sidebarVisible: state.sidebarVisible,
         sidebarWidth: state.sidebarWidth,
@@ -439,8 +477,22 @@ export const useAppStore = create<AppState>()(
         projects: state.projects,
         activeProjectId: state.activeProjectId,
         recentFiles: state.recentFiles,
-        selectedMaterials: state.selectedMaterials
-      })
+        selectedMaterials: state.selectedMaterials,
+        autoSaveEnabled: state.autoSaveEnabled
+      }),
+      // Merge persisted state with defaults to handle new fields
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<AppState>
+        return {
+          ...currentState,
+          ...persisted,
+          // Ensure columnWidths has all fields (for backwards compatibility)
+          columnWidths: {
+            ...currentState.columnWidths,
+            ...(persisted.columnWidths || {})
+          }
+        }
+      }
     }
   )
 )
@@ -458,7 +510,10 @@ export function useProjectConfig() {
   return {
     ...config,
     safetyFactor: config.safetyFactor || defaultConfig.safetyFactor,
-    box: config.box || defaultConfig.box
+    box: config.box || defaultConfig.box,
+    endcapConstraint: config.endcapConstraint || defaultConfig.endcapConstraint,
+    forcedWallThicknessMm: config.forcedWallThicknessMm,
+    forcedEndcapThicknessMm: config.forcedEndcapThicknessMm
   }
 }
 

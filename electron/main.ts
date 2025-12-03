@@ -160,11 +160,23 @@ ipcMain.on('window:close', () => mainWindow?.close())
 ipcMain.handle('window:is-maximized', () => mainWindow?.isMaximized())
 
 // File dialogs
-ipcMain.handle('dialog:save-config', async (_, data: string) => {
+// Save to existing path (for Save and autosave)
+ipcMain.handle('dialog:save-to-path', async (_, data: string, filePath: string) => {
+  try {
+    fs.writeFileSync(filePath, data, 'utf-8')
+    return { success: true, filePath }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+})
+
+// Save with dialog (for Save As... or first-time Save)
+ipcMain.handle('dialog:save-config', async (_, data: string, defaultName?: string) => {
   const result = await dialog.showSaveDialog(mainWindow!, {
     title: 'Save Configuration',
-    defaultPath: 'buoyancy-config.json',
+    defaultPath: defaultName || 'config.tube',
     filters: [
+      { name: 'Tube Files', extensions: ['tube'] },
       { name: 'JSON Files', extensions: ['json'] },
       { name: 'All Files', extensions: ['*'] }
     ]
@@ -185,6 +197,7 @@ ipcMain.handle('dialog:load-config', async () => {
   const result = await dialog.showOpenDialog(mainWindow!, {
     title: 'Load Configuration',
     filters: [
+      { name: 'Tube Files', extensions: ['tube'] },
       { name: 'JSON Files', extensions: ['json'] },
       { name: 'All Files', extensions: ['*'] }
     ],
@@ -214,7 +227,7 @@ ipcMain.handle('dialog:load-recent-file', async (_, filePath: string) => {
 ipcMain.handle('dialog:export-results', async (_, data: string) => {
   const result = await dialog.showSaveDialog(mainWindow!, {
     title: 'Export Results',
-    defaultPath: 'buoyancy-results.csv',
+    defaultPath: 'tubes-results.csv',
     filters: [
       { name: 'CSV Files', extensions: ['csv'] },
       { name: 'JSON Files', extensions: ['json'] },
