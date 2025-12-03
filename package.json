@@ -1,6 +1,6 @@
 {
   "name": "everything-we-currently-know-about-tubes",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Everything We Currently Know About Tubes - Optimize pressure vessel dimensions for underwater applications",
   "main": "dist-electron/main.js",
   "scripts": {

@@ -2,6 +2,13 @@
 
 All notable changes to Everything We Currently Know About Tubes will be documented in this file.
 
+## [1.1.2] - 2024-12-03
+
+### Fixed
+- App not launching on some Windows machines (window now shows after 5s fallback)
+- Added startup logging for debugging launch issues
+- Added crash and error handlers for renderer process
+
 ## [1.1.1] - 2024-12-02
 
 ### Fixed
