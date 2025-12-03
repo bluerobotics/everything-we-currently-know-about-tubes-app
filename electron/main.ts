@@ -10,13 +10,28 @@ let mainWindow: BrowserWindow | null = null
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
+// Enable logging to help debug startup issues
+const log = (...args: unknown[]) => {
+  console.log('[Main]', ...args)
+}
+
+log('App starting...', { isDev, dirname: __dirname })
+
+// Workaround for GPU issues on some Windows machines
+app.commandLine.appendSwitch('enable-features', 'SharedArrayBuffer')
+
 const gotTheLock = app.requestSingleInstanceLock()
 
 if (!gotTheLock) {
+  log('Another instance is running, quitting...')
   app.quit()
+} else {
+  log('Got single instance lock')
 }
 
 function createWindow() {
+  log('Creating BrowserWindow...')
+  
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 850,
@@ -38,14 +53,49 @@ function createWindow() {
     show: false
   })
 
-  mainWindow.once('ready-to-show', () => {
-    mainWindow?.show()
+  // Show window when ready, with a fallback timeout in case ready-to-show never fires
+  let windowShown = false
+  const showWindow = () => {
+    if (!windowShown && mainWindow) {
+      windowShown = true
+      mainWindow.show()
+    }
+  }
+
+  mainWindow.once('ready-to-show', showWindow)
+  
+  // Fallback: show window after 5 seconds even if ready-to-show didn't fire
+  setTimeout(showWindow, 5000)
+
+  // Log renderer events for debugging
+  mainWindow.webContents.on('crashed', () => {
+    log('Renderer process crashed!')
   })
 
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+    log('Failed to load:', errorCode, errorDescription)
+  })
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    log('Page finished loading')
+  })
+
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    log('Render process gone:', details.reason)
+  })
+
+  const loadPath = isDev 
+    ? 'http://localhost:5173' 
+    : path.join(__dirname, '../dist/index.html')
+  
+  log('Loading:', loadPath)
+  
   if (isDev) {
-    mainWindow.loadURL('http://localhost:5173')
+    mainWindow.loadURL(loadPath)
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
+    mainWindow.loadFile(loadPath).catch(err => {
+      log('Error loading file:', err)
+    })
   }
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -254,6 +304,7 @@ app.on('second-instance', () => {
 })
 
 app.whenReady().then(() => {
+  log('App ready, creating window...')
   createWindow()
 
   app.on('activate', () => {
@@ -261,6 +312,8 @@ app.whenReady().then(() => {
       createWindow()
     }
   })
+}).catch(err => {
+  log('Error during app ready:', err)
 })
 
 app.on('window-all-closed', () => {
