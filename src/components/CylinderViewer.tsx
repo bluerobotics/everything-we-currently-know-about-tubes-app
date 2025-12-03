@@ -468,13 +468,14 @@ function ControlsWithInteractionDetection({ onInteraction }: { onInteraction: ()
       const controls = controlsRef.current
       const handleStart = () => onInteraction()
       
+      // Set Z-up coordinate system
+      controls.object.up.set(0, 0, 1)
+      controls.update()
+      
       controls.addEventListener('start', handleStart)
       return () => controls.removeEventListener('start', handleStart)
     }
   }, [onInteraction])
-
-  // Z-up coordinate system
-  const upVector = useMemo(() => new THREE.Vector3(0, 0, 1), [])
 
   return (
     <OrbitControls 
@@ -484,7 +485,6 @@ function ControlsWithInteractionDetection({ onInteraction }: { onInteraction: ()
       enableRotate={true}
       minDistance={0.5}
       maxDistance={50}
-      up={upVector}
     />
   )
 }
