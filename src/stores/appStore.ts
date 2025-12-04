@@ -27,11 +27,19 @@ export interface ProjectConfig {
   endcapConstraint: EndcapConstraint
 }
 
+export interface PinnedResult extends OptimizationResult {
+  pinnedId: string  // Unique ID for the pinned result
+  pinnedAt: number  // Timestamp when pinned
+  pinnedDepthM?: number  // Depth at which this was pinned (for reference)
+  pinnedPressureMpa?: number  // Pressure at which this was pinned
+}
+
 export interface Project {
   id: string
   name: string
   config: ProjectConfig
   results: OptimizationResult[]
+  pinnedResults: PinnedResult[]
   selectedResultIndex: number | null
   modified: boolean
   filePath?: string
@@ -42,6 +50,7 @@ export interface SavedProject {
   name: string
   config: ProjectConfig
   results: OptimizationResult[]
+  pinnedResults?: PinnedResult[]
   selectedResultIndex: number | null
 }
 
@@ -79,6 +88,7 @@ function createProject(name: string = 'Untitled'): Project {
     name,
     config: { ...defaultConfig },
     results: [],
+    pinnedResults: [],
     selectedResultIndex: null,
     modified: false
   }
@@ -169,6 +179,12 @@ interface AppState {
   setResults: (results: OptimizationResult[]) => void
   setSelectedResultIndex: (index: number | null) => void
   setIsOptimizing: (optimizing: boolean) => void
+  
+  // Actions - Pinned Results
+  pinResult: (result: OptimizationResult) => void
+  unpinResult: (pinnedId: string) => void
+  clearPinnedResults: () => void
+  isPinned: (result: OptimizationResult) => boolean
   
   // Getters
   getActiveProject: () => Project | null
@@ -354,6 +370,65 @@ export const useAppStore = create<AppState>()(
         setSelectedResultIndex: (index) => updateActiveProject(() => ({ selectedResultIndex: index })),
         setIsOptimizing: (optimizing) => set({ isOptimizing: optimizing }),
         
+        // Actions - Pinned Results
+        pinResult: (result) => {
+          const project = get().getActiveProject()
+          if (!project) return
+          
+          // Create a unique ID for the pinned result
+          const pinnedId = `pin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          
+          // Ensure pinnedResults exists (for backwards compatibility with old projects)
+          const currentPinned = project.pinnedResults || []
+          
+          // Check if already pinned (same material, dimensions)
+          const alreadyPinned = currentPinned.some(p => 
+            p.materialKey === result.materialKey &&
+            p.diameterMm === result.diameterMm &&
+            p.lengthMm === result.lengthMm &&
+            p.wallThicknessMm === result.wallThicknessMm &&
+            p.endcapThicknessMm === result.endcapThicknessMm
+          )
+          
+          if (alreadyPinned) return
+          
+          const pinnedResult: PinnedResult = {
+            ...result,
+            pinnedId,
+            pinnedAt: Date.now(),
+            pinnedDepthM: project.config.useDirectPressure ? undefined : project.config.depthM,
+            pinnedPressureMpa: project.config.useDirectPressure ? project.config.pressureMpa : undefined
+          }
+          
+          updateActiveProject(p => ({
+            pinnedResults: [...(p.pinnedResults || []), pinnedResult]
+          }))
+        },
+        
+        unpinResult: (pinnedId) => {
+          updateActiveProject(p => ({
+            pinnedResults: (p.pinnedResults || []).filter(r => r.pinnedId !== pinnedId)
+          }))
+        },
+        
+        clearPinnedResults: () => {
+          updateActiveProject(() => ({ pinnedResults: [] }))
+        },
+        
+        isPinned: (result) => {
+          const project = get().getActiveProject()
+          if (!project) return false
+          
+          const currentPinned = project.pinnedResults || []
+          return currentPinned.some(p => 
+            p.materialKey === result.materialKey &&
+            p.diameterMm === result.diameterMm &&
+            p.lengthMm === result.lengthMm &&
+            p.wallThicknessMm === result.wallThicknessMm &&
+            p.endcapThicknessMm === result.endcapThicknessMm
+          )
+        },
+        
         // Getters
         getActiveProject: () => {
           const { projects, activeProjectId } = get()
@@ -379,6 +454,7 @@ export const useAppStore = create<AppState>()(
             name: project.name,
             config: project.config,
             results: project.results,
+            pinnedResults: project.pinnedResults,
             selectedResultIndex: project.selectedResultIndex
           }
         },
@@ -395,6 +471,7 @@ export const useAppStore = create<AppState>()(
             name: fileName,
             config: { ...defaultConfig, ...saved.config },
             results: saved.results || [],
+            pinnedResults: saved.pinnedResults || [],
             selectedResultIndex: saved.selectedResultIndex ?? (saved.results?.length > 0 ? 0 : null),
             modified: false,
             filePath
@@ -483,9 +560,17 @@ export const useAppStore = create<AppState>()(
       // Merge persisted state with defaults to handle new fields
       merge: (persistedState, currentState) => {
         const persisted = persistedState as Partial<AppState>
+        
+        // Ensure all projects have pinnedResults array
+        const projects = (persisted.projects || currentState.projects).map(p => ({
+          ...p,
+          pinnedResults: p.pinnedResults ?? []
+        }))
+        
         return {
           ...currentState,
           ...persisted,
+          projects,
           // Ensure columnWidths has all fields (for backwards compatibility)
           columnWidths: {
             ...currentState.columnWidths,
@@ -521,6 +606,7 @@ export function useProjectResults() {
   const project = useAppStore(s => s.getActiveProject())
   return {
     results: project?.results || [],
+    pinnedResults: project?.pinnedResults ?? [],  // Use ?? to handle undefined from old projects
     selectedResultIndex: project?.selectedResultIndex ?? null
   }
 }

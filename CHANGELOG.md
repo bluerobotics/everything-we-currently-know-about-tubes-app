@@ -2,6 +2,19 @@
 
 All notable changes to Everything We Currently Know About Tubes will be documented in this file.
 
+## [1.2.0] - 2024-12-04
+
+### Added
+- **Result Pinning**: Pin tube designs to compare across different optimization runs
+  - Pin button on each result row to save material + dimensions
+  - Pinned results persist when changing depth, pressure, or box size
+  - Shows original depth/pressure where result was pinned (e.g., "@30m")
+  - Safety factor auto-recalculates for current operating conditions
+  - Original SF shown in parentheses for reference (e.g., "4.0× (1.2)")
+  - Pinned section with amber/gold styling at top of results table
+  - Clear all pinned results with trash button
+  - Pinned results saved with project files
+
 ## [1.1.2] - 2024-12-03
 
 ### Fixed

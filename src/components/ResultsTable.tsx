@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { useAppStore, useProjectResults, useProjectConfig, ColumnWidths } from '../stores/appStore'
-import { ChevronUp, ChevronDown, Filter, X } from 'lucide-react'
+import { useAppStore, useProjectResults, useProjectConfig, ColumnWidths, PinnedResult } from '../stores/appStore'
+import { ChevronUp, ChevronDown, Filter, X, Pin, PinOff, Trash2 } from 'lucide-react'
+import { OptimizationResult, depthToPressure } from '../lib/optimizer'
 
 type SortKey = 'rank' | 'material' | 'diameter' | 'length' | 'wall' | 'cap' | 'mass' | 'buoyancy' | 'ratio' | 'failDepth' | 'failMode' | 'safety' | 'pack' | 'totalMass' | 'totalBuoy'
 type SortDir = 'asc' | 'desc'
@@ -31,9 +32,23 @@ interface FilterState {
 }
 
 export function ResultsTable() {
-  const { results, selectedResultIndex } = useProjectResults()
-  const { setSelectedResultIndex, columnWidths, setColumnWidth } = useAppStore()
+  const { results, pinnedResults, selectedResultIndex } = useProjectResults()
+  const { setSelectedResultIndex, columnWidths, setColumnWidth, pinResult, unpinResult, clearPinnedResults, isPinned } = useAppStore()
   const config = useProjectConfig()
+  const [showPinned, setShowPinned] = useState(true)
+  
+  // Calculate current operating pressure for recalculating pinned results' safety factors
+  const currentPressureMpa = useMemo(() => {
+    return config.useDirectPressure 
+      ? config.pressureMpa 
+      : depthToPressure(config.depthM, config.waterDensity)
+  }, [config.useDirectPressure, config.pressureMpa, config.depthM, config.waterDensity])
+  
+  // Recalculate safety factor for a pinned result at the current operating pressure
+  const getRecalculatedSF = useCallback((result: PinnedResult) => {
+    if (!result.failurePressureMpa || currentPressureMpa <= 0) return result.actualSafetyFactor
+    return result.failurePressureMpa / currentPressureMpa
+  }, [currentPressureMpa])
   
   const showPacking = config.box?.enabled && results.length > 0 && results[0].packingCount !== undefined
   const showMaterial = config.selectedMaterial === 'ALL' && results.length > 0
@@ -318,8 +333,28 @@ export function ResultsTable() {
     return `${(kg * 1000).toFixed(0)}g`
   }
 
+  // Handle pin/unpin for a result
+  const handlePin = useCallback((result: OptimizationResult, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isPinned(result)) {
+      // Find the pinned result and unpin it
+      const pinned = pinnedResults.find(p => 
+        p.materialKey === result.materialKey &&
+        p.diameterMm === result.diameterMm &&
+        p.lengthMm === result.lengthMm &&
+        p.wallThicknessMm === result.wallThicknessMm &&
+        p.endcapThicknessMm === result.endcapThicknessMm
+      )
+      if (pinned) {
+        unpinResult(pinned.pinnedId)
+      }
+    } else {
+      pinResult(result)
+    }
+  }, [isPinned, pinnedResults, pinResult, unpinResult])
+
   // Early return AFTER all hooks
-  if (results.length === 0) {
+  if (results.length === 0 && pinnedResults.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center text-vsc-fg-dim">
         <div className="text-center">
@@ -359,6 +394,32 @@ export function ResultsTable() {
             Clear
           </button>
         )}
+        
+        {/* Pinned results section */}
+        {pinnedResults.length > 0 && (
+          <>
+            <div className="w-px h-4 bg-vsc-border mx-1" />
+            <button
+              onClick={() => setShowPinned(!showPinned)}
+              className={`flex items-center gap-1 px-2 py-1 rounded transition-colors ${
+                showPinned
+                  ? 'bg-amber-500/20 text-amber-400'
+                  : 'text-vsc-fg-dim hover:text-vsc-fg hover:bg-vsc-highlight'
+              }`}
+            >
+              <Pin size={12} />
+              Pinned ({pinnedResults.length})
+            </button>
+            <button
+              onClick={clearPinnedResults}
+              className="flex items-center gap-1 px-2 py-1 rounded text-vsc-fg-dim hover:text-vsc-error hover:bg-vsc-highlight"
+              title="Clear all pinned results"
+            >
+              <Trash2 size={12} />
+            </button>
+          </>
+        )}
+        
         <span className="text-vsc-fg-muted ml-auto">
           {filteredSortedResults.length} of {results.length} results
         </span>
@@ -369,6 +430,9 @@ export function ResultsTable() {
         <table className="results-table">
           <thead>
             <tr>
+              <th className="w-8 text-center" title="Pin result">
+                <Pin size={12} className="mx-auto text-vsc-fg-dim" />
+              </th>
               <SortHeader label="#" sortKeyName="rank" columnKey="rank" />
               {showMaterial && <SortHeader label="Material" sortKeyName="material" columnKey="material" />}
               <SortHeader label="Dia" sortKeyName="diameter" columnKey="diameter" />
@@ -417,7 +481,8 @@ export function ResultsTable() {
             {/* Filter row */}
             {showFilters && (
               <tr className="bg-vsc-panel text-[10px]">
-                <th></th>
+                <th></th> {/* Pin column */}
+                <th></th> {/* Rank column */}
                 {showMaterial && (
                   <th className="px-1 py-1">
                     <input
@@ -501,15 +566,132 @@ export function ResultsTable() {
             )}
           </thead>
           <tbody>
+            {/* Pinned results section */}
+            {showPinned && pinnedResults.length > 0 && (
+              <>
+                <tr className="bg-amber-500/10 border-y border-amber-500/30">
+                  <td colSpan={showPacking ? (showMaterial ? 17 : 16) : (showMaterial ? 13 : 12)} className="text-amber-400 text-xs font-medium py-1 px-2">
+                    <div className="flex items-center gap-2">
+                      <Pin size={12} />
+                      Pinned Results
+                    </div>
+                  </td>
+                </tr>
+                {pinnedResults.map((r) => {
+                  // Recalculate safety factor at current operating depth
+                  const recalcSF = getRecalculatedSF(r)
+                  const originalSF = r.actualSafetyFactor
+                  const sfChanged = recalcSF !== originalSF && recalcSF !== undefined
+                  
+                  return (
+                    <tr
+                      key={r.pinnedId}
+                      className="cursor-pointer bg-amber-500/5 hover:bg-amber-500/10 border-l-2 border-amber-500"
+                    >
+                      <td className="text-center">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); unpinResult(r.pinnedId) }}
+                          className="p-1 rounded hover:bg-amber-500/20 text-amber-400 transition-colors"
+                          title="Unpin result"
+                        >
+                          <PinOff size={12} />
+                        </button>
+                      </td>
+                      <td className="text-amber-400/60 text-[10px]" title={r.pinnedDepthM ? `Pinned at ${r.pinnedDepthM}m depth` : r.pinnedPressureMpa ? `Pinned at ${r.pinnedPressureMpa.toFixed(2)} MPa` : ''}>
+                        {r.pinnedDepthM ? `@${r.pinnedDepthM}m` : r.pinnedPressureMpa ? `@${r.pinnedPressureMpa.toFixed(1)}MPa` : '—'}
+                      </td>
+                      {showMaterial ? (
+                        <td className="text-vsc-fg" title={r.materialName}>
+                          {r.materialKey}
+                        </td>
+                      ) : (
+                        /* For pinned results, always show material info in the diameter column area when material column is hidden */
+                        null
+                      )}
+                      <td>
+                        {!showMaterial && <span className="text-vsc-fg-dim text-[10px] mr-1">{r.materialKey}</span>}
+                        {r.diameterMm.toFixed(1)}
+                      </td>
+                      <td>{r.lengthMm.toFixed(1)}</td>
+                      <td>{r.wallThicknessMm.toFixed(2)}</td>
+                      <td>{r.endcapThicknessMm.toFixed(2)}</td>
+                      <td>{(r.massKg * 1000).toFixed(0)}g</td>
+                      <td className="text-vsc-success">{(r.netBuoyancyKg * 1000).toFixed(0)}g</td>
+                      <td>{r.buoyancyRatio.toFixed(2)}</td>
+                      <td className={(recalcSF ?? 0) < 1.5 ? 'text-vsc-error' : (recalcSF ?? 0) < 2 ? 'text-vsc-warning' : ''}>
+                        {r.failureDepthM != null ? `${r.failureDepthM.toFixed(0)}m` : '-'}
+                      </td>
+                      <td className="text-[10px] text-vsc-fg-dim" title={r.failureMode || ''}>
+                        {r.failureMode === 'wall-stress' ? 'tube radial' :
+                         r.failureMode === 'wall-buckling' ? 'tube buckling' :
+                         r.failureMode === 'endcap-stress' ? 'endcap stress' :
+                         r.failureMode === 'endcap-buckling' ? 'endcap buckling' : '-'}
+                      </td>
+                      <td 
+                        className={(recalcSF ?? 0) < 1.5 ? 'text-vsc-error font-bold' : (recalcSF ?? 0) < 2 ? 'text-vsc-warning' : 'text-vsc-success'}
+                        title={sfChanged ? `Original SF at pinned depth: ${originalSF?.toFixed(1)}×` : undefined}
+                      >
+                        {recalcSF == null ? '-' : recalcSF === Infinity ? '∞' : (
+                          <>
+                            {`${recalcSF.toFixed(1)}×`}
+                            {sfChanged && <span className="text-[9px] text-vsc-fg-dim ml-0.5">({originalSF?.toFixed(1)})</span>}
+                          </>
+                        )}
+                      </td>
+                      {showPacking && (
+                        <>
+                          <td>{formatMass(r.totalMassKg || 0)}</td>
+                          <td className="font-medium whitespace-nowrap">{r.packingCount}</td>
+                          <td 
+                            className="font-bold text-center whitespace-nowrap"
+                            style={{ 
+                              color: r.packingOrientation === 'x' ? '#339af0' 
+                                   : r.packingOrientation === 'y' ? '#20c997' 
+                                   : '#b197fc' 
+                            }}
+                          >
+                            {r.packingOrientation?.toUpperCase()}
+                          </td>
+                          <td className="font-medium">{formatMass(r.totalBuoyancyKg || 0)}</td>
+                        </>
+                      )}
+                    </tr>
+                  )
+                })}
+                {results.length > 0 && (
+                  <tr className="bg-vsc-bg-dark border-b border-vsc-border">
+                    <td colSpan={showPacking ? (showMaterial ? 17 : 16) : (showMaterial ? 13 : 12)} className="text-vsc-fg-dim text-xs py-1 px-2">
+                      Current Results
+                    </td>
+                  </tr>
+                )}
+              </>
+            )}
+            
+            {/* Regular results */}
             {filteredSortedResults.map((r) => {
               const originalIndex = results.findIndex(orig => orig === r)
+              const pinned = isPinned(r)
               
               return (
                 <tr
                   key={originalIndex}
                   onClick={() => setSelectedResultIndex(originalIndex)}
-                  className={`cursor-pointer ${selectedResultIndex === originalIndex ? 'selected' : ''}`}
+                  className={`cursor-pointer ${selectedResultIndex === originalIndex ? 'selected' : ''} ${pinned ? 'opacity-50' : ''}`}
                 >
+                  <td className="text-center">
+                    <button
+                      onClick={(e) => handlePin(r, e)}
+                      className={`p-1 rounded transition-colors ${
+                        pinned 
+                          ? 'text-amber-400 hover:bg-amber-500/20' 
+                          : 'text-vsc-fg-dim hover:text-amber-400 hover:bg-vsc-highlight'
+                      }`}
+                      title={pinned ? 'Unpin result' : 'Pin result'}
+                    >
+                      {pinned ? <PinOff size={12} /> : <Pin size={12} />}
+                    </button>
+                  </td>
                   <td className="text-vsc-fg-muted">{r.rank}</td>
                   {showMaterial && (
                     <td className="text-vsc-fg" title={r.materialName}>
