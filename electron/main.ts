@@ -224,9 +224,9 @@ ipcMain.handle('dialog:save-to-path', async (_, data: string, filePath: string) 
 ipcMain.handle('dialog:save-config', async (_, data: string, defaultName?: string) => {
   const result = await dialog.showSaveDialog(mainWindow!, {
     title: 'Save Configuration',
-    defaultPath: defaultName || 'config.tube',
+    defaultPath: defaultName || 'config.thruster',
     filters: [
-      { name: 'Tube Files', extensions: ['tube'] },
+      { name: 'Thruster Files', extensions: ['thruster'] },
       { name: 'JSON Files', extensions: ['json'] },
       { name: 'All Files', extensions: ['*'] }
     ]
@@ -247,7 +247,7 @@ ipcMain.handle('dialog:load-config', async () => {
   const result = await dialog.showOpenDialog(mainWindow!, {
     title: 'Load Configuration',
     filters: [
-      { name: 'Tube Files', extensions: ['tube'] },
+      { name: 'Thruster Files', extensions: ['thruster'] },
       { name: 'JSON Files', extensions: ['json'] },
       { name: 'All Files', extensions: ['*'] }
     ],
@@ -277,7 +277,7 @@ ipcMain.handle('dialog:load-recent-file', async (_, filePath: string) => {
 ipcMain.handle('dialog:export-results', async (_, data: string) => {
   const result = await dialog.showSaveDialog(mainWindow!, {
     title: 'Export Results',
-    defaultPath: 'tubes-results.csv',
+    defaultPath: 'thruster-results.csv',
     filters: [
       { name: 'CSV Files', extensions: ['csv'] },
       { name: 'JSON Files', extensions: ['json'] },

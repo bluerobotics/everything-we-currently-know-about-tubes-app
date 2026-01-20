@@ -9,7 +9,6 @@ import { Sidebar } from './components/Sidebar'
 import { ResultsTable } from './components/ResultsTable'
 import { DetailsPanel } from './components/DetailsPanel'
 import { StatusBar } from './components/StatusBar'
-import { CylinderViewer } from './components/CylinderViewer'
 
 function App() {
   const {
@@ -37,7 +36,6 @@ function App() {
 
   const [isResizing, setIsResizing] = useState(false)
   const [statusMessage, setStatusMessage] = useState('')
-  const [viewerWidth, setViewerWidth] = useState(450) // Default wider viewer
   const autoSaveTimerRef = useRef<number | null>(null)
 
   // Handle sidebar resize
@@ -76,7 +74,7 @@ function App() {
     
     if (!window.electronAPI) {
       // Fallback for browser - download as file
-      const fileName = `${projectData.name.replace(/[^a-z0-9]/gi, '-')}.tube`
+      const fileName = `${projectData.name.replace(/[^a-z0-9]/gi, '-')}.thruster`
       const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -100,7 +98,7 @@ function App() {
       }
     } else {
       // Otherwise show save dialog
-      const result = await window.electronAPI.saveConfig(JSON.stringify(projectData, null, 2), `${projectData.name}.tube`)
+      const result = await window.electronAPI.saveConfig(JSON.stringify(projectData, null, 2), `${projectData.name}.thruster`)
       if (result.success && result.filePath) {
         markProjectSaved(result.filePath)
         setStatusMessage(`Saved to ${result.filePath}`)
@@ -116,7 +114,7 @@ function App() {
     
     if (!window.electronAPI) {
       // Fallback for browser - same as regular save
-      const fileName = `${projectData.name.replace(/[^a-z0-9]/gi, '-')}.tube`
+      const fileName = `${projectData.name.replace(/[^a-z0-9]/gi, '-')}.thruster`
       const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -130,7 +128,7 @@ function App() {
       return
     }
 
-    const result = await window.electronAPI.saveConfig(JSON.stringify(projectData, null, 2), `${projectData.name}.tube`)
+    const result = await window.electronAPI.saveConfig(JSON.stringify(projectData, null, 2), `${projectData.name}.thruster`)
     if (result.success && result.filePath) {
       markProjectSaved(result.filePath)
       setStatusMessage(`Saved to ${result.filePath}`)
@@ -166,7 +164,7 @@ function App() {
       // Fallback for browser - use file input
       const input = document.createElement('input')
       input.type = 'file'
-      input.accept = '.tube,.json'
+      input.accept = '.thruster,.json'
       input.onchange = async (e) => {
         const file = (e.target as HTMLInputElement).files?.[0]
         if (file) {
@@ -258,7 +256,7 @@ function App() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'tubes-results.csv'
+      a.download = 'thruster-results.csv'
       a.click()
       URL.revokeObjectURL(url)
       setStatusMessage('Results downloaded')
@@ -429,7 +427,7 @@ function App() {
           {/* Toolbar */}
           <div className="h-10 bg-vsc-bg-dark border-b border-vsc-border flex items-center justify-between px-4 flex-shrink-0">
             <div className="text-sm text-vsc-fg-dim">
-              {statusMessage || 'Everything we currently know about tubes'}
+              {statusMessage || 'Thruster Viewer'}
             </div>
             <button
               onClick={runOptimization}
@@ -437,26 +435,15 @@ function App() {
               className="flex items-center gap-2 px-4 py-1.5 bg-vsc-accent hover:bg-vsc-accent-hover disabled:opacity-50 text-white rounded text-sm font-medium transition-colors"
             >
               <Play size={14} />
-              {isOptimizing ? 'Running...' : 'Run Optimization'}
+              {isOptimizing ? 'Running...' : 'Run Analysis'}
             </button>
           </div>
 
-          {/* Content area with results and 3D view */}
+          {/* Content area with results */}
           <div className="flex-1 flex overflow-hidden min-h-0">
-            {/* Left: Results table */}
+            {/* Results table - now takes full width */}
             <div className="flex-1 flex flex-col overflow-hidden min-w-0">
               <ResultsTable />
-            </div>
-
-            {/* Right: 3D Viewer */}
-            <div 
-              className="border-l border-vsc-border flex-shrink-0"
-              style={{ width: viewerWidth }}
-            >
-              <CylinderViewer 
-                width={viewerWidth}
-                onWidthChange={setViewerWidth}
-              />
             </div>
           </div>
 

@@ -1,54 +1,77 @@
-# Everything We Currently Know About Tubes
+# Thruster Viewer
 
-*Even if you haven't seen them, you've definitely heard of them. So, what's all the buzz? Here's everything there is to know about tubes.*
+A desktop application for visualizing and analyzing thruster performance data.
 
----
+## Features
 
-## Tubes are definitely rods
+- **Data Analysis**: Run optimizations and view results in a sortable, filterable table
+- **Multi-tab Support**: Work with multiple projects simultaneously
+- **Pinned Results**: Pin important results for comparison across different configurations
+- **Export**: Export results to CSV for further analysis
+- **Dark Theme**: VS Code-inspired dark interface
 
-There's no two ways around it. Tubes are round and skinny, rods are round and skinny—the slipper fits.
+## Getting Started
 
-## Tubes are different than circles
+### Prerequisites
 
-If you look at a tube head-on, you'll see that there's definitely a circle-like element, but that's only a very small part of a much bigger picture.
+- Node.js 18+
+- npm or yarn
 
-## There seems to be a large hole
+### Installation
 
-You may be wondering, *are tubes dense all the way through like bricks are*? And the answer to that question is "Most likely not." There appears to be a hole in tubes that goes from the beginning of the tube to the end of the tube.
+```bash
+npm install
+```
 
-## When people call television "the tube," they are telling a fib
+### Development
 
-While there are many people who refer to TV as "the tube," this is an egregious mischaracterization and should not be tolerated.
+Run the web development server:
+```bash
+npm run dev
+```
 
-## Tubes come in two kinds: plastic and metal
+Run with Electron:
+```bash
+npm run electron:dev
+```
 
-If it's not one of these, then it just isn't a tube.
+### Build
 
-## Tubes are found in many countries all over the world, including Poland, Singapore, and Jamaica
+Build for production:
+```bash
+npm run build
+```
 
-Please contact your local government office to find out if you too live in a place that has tubes.
+## Project Structure
 
-## Just because a tube is large enough to fit a man does not mean a man is large enough to fit a tube
+```
+src/
+├── components/     # React components
+│   ├── sidebar/    # Sidebar views (parameters, materials, info)
+│   ├── MenuBar.tsx
+│   ├── TabBar.tsx
+│   ├── ActivityBar.tsx
+│   ├── Sidebar.tsx
+│   ├── ResultsTable.tsx
+│   ├── DetailsPanel.tsx
+│   └── StatusBar.tsx
+├── lib/            # Core logic
+│   └── optimizer.ts
+├── stores/         # Zustand state management
+│   └── appStore.ts
+├── App.tsx
+└── main.tsx
+```
 
-Logically speaking, yes, a tube should be able to fit inside a man if the man can fit in the tube. But sometimes what's logical isn't always what's true.
+## Keyboard Shortcuts
 
-## There is a movie about tubes
+- `Ctrl/Cmd + N` - New project
+- `Ctrl/Cmd + O` - Open project
+- `Ctrl/Cmd + S` - Save project
+- `Ctrl/Cmd + Shift + S` - Save As
+- `Ctrl/Cmd + E` - Export results
+- `Ctrl/Cmd + B` - Toggle sidebar
 
-It's called *Tubes: The Exciting Journey About Tubes.*
+## License
 
-## Tubes can be as long as you'd like or as short as you'd like
-
-Some tubes are as long as 13 feet.
-
-## Contrary to popular belief, this is not a tube
-
-🛁 ← This is a TUB.
-
-## The purpose of tubes is to make bigger tubes
-
-Tubes are great because if you attach one tube to another tube, together they become an even bigger tube. Gotta love those tubes, baby!
-
----
-
-*Source: [ClickHole - Everything We Currently Know About Tubes](https://clickhole.com/everything-we-currently-know-about-tubes-1825122296/)*
-
+MIT

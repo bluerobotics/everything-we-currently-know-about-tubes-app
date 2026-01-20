@@ -1,7 +1,7 @@
 {
-  "name": "everything-we-currently-know-about-tubes",
-  "version": "1.2.0",
-  "description": "Everything We Currently Know About Tubes - Optimize pressure vessel dimensions for underwater applications",
+  "name": "thruster-viewer",
+  "version": "0.1.0",
+  "description": "Thruster Viewer - Visualize and analyze thruster performance data",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
@@ -10,19 +10,15 @@
     "electron:dev": "concurrently \"vite\" \"electron .\""
   },
   "dependencies": {
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.4.2",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "three": "^0.181.2",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
-    "@types/three": "^0.181.0",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.1.2",
@@ -36,8 +32,8 @@
     "vite-plugin-electron-renderer": "^0.14.6"
   },
   "build": {
-    "appId": "com.tubes.everything",
-    "productName": "Everything We Currently Know About Tubes",
+    "appId": "com.thruster.viewer",
+    "productName": "Thruster Viewer",
     "artifactName": "${productName}-${version}-${os}.${ext}",
     "directories": {
       "output": "release"

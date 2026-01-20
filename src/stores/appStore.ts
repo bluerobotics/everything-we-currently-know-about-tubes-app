@@ -463,7 +463,7 @@ export const useAppStore = create<AppState>()(
         importProject: (saved, filePath) => {
           // Use filename from path (not the name stored inside the JSON)
           const fileName = filePath 
-            ? filePath.split(/[/\\]/).pop()?.replace(/\.(tube|buoy\.json|json)$/i, '') || saved.name || 'Imported'
+            ? filePath.split(/[/\\]/).pop()?.replace(/\.(thruster|json)$/i, '') || saved.name || 'Imported'
             : saved.name || 'Imported'
           
           const newProj: Project = {
@@ -486,7 +486,7 @@ export const useAppStore = create<AppState>()(
         markProjectSaved: (filePath) => {
           const { projects, activeProjectId, recentFiles } = get()
           // Extract filename without extension for the tab name
-          const fileName = filePath.split(/[/\\]/).pop()?.replace(/\.(tube|buoy\.json|json)$/i, '') || 'Untitled'
+          const fileName = filePath.split(/[/\\]/).pop()?.replace(/\.(thruster|json)$/i, '') || 'Untitled'
           
           // Add to recent files (at the start, remove duplicates, limit to 10)
           const newRecentFiles = [filePath, ...recentFiles.filter(f => f !== filePath)].slice(0, 10)
@@ -545,7 +545,7 @@ export const useAppStore = create<AppState>()(
       }
     },
     {
-      name: 'tubes-app-storage',
+      name: 'thruster-viewer-storage',
       partialize: (state) => ({
         sidebarVisible: state.sidebarVisible,
         sidebarWidth: state.sidebarWidth,
