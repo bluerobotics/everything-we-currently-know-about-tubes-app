@@ -197,6 +197,11 @@ function createAppMenu() {
 ipcMain.handle('app:get-version', () => app.getVersion())
 ipcMain.handle('app:get-platform', () => process.platform)
 
+// Renderer console logging - forwards logs to main process for visibility
+ipcMain.on('console:log', (_, ...args: unknown[]) => {
+  console.log('[Renderer]', ...args)
+})
+
 // Window controls
 ipcMain.on('window:minimize', () => mainWindow?.minimize())
 ipcMain.on('window:maximize', () => {
@@ -292,6 +297,153 @@ ipcMain.handle('dialog:export-results', async (_, data: string) => {
     } catch (err) {
       return { success: false, error: String(err) }
     }
+  }
+  return { success: false, canceled: true }
+})
+
+// ============================================================================
+// Data Folder and CSV File Handlers
+// ============================================================================
+
+interface TestRunMetadata {
+  id: string
+  name: string
+  filePath: string
+}
+
+interface TestSessionMetadata {
+  id: string
+  name: string
+  folderPath: string
+  runs: TestRunMetadata[]
+}
+
+/**
+ * Generate a deterministic ID from a path.
+ * This ensures the same file always gets the same ID across sessions.
+ */
+function pathToId(filePath: string): string {
+  // Create a simple hash from the path
+  let hash = 0
+  for (let i = 0; i < filePath.length; i++) {
+    const char = filePath.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32bit integer
+  }
+  // Make it positive and convert to base36
+  return Math.abs(hash).toString(36)
+}
+
+/**
+ * Scan a data folder and return the structure of sessions and runs.
+ * Does NOT load CSV data - just returns file paths for lazy loading.
+ */
+ipcMain.handle('fs:scan-data-folder', async (_, folderPath: string) => {
+  try {
+    const sessions: TestSessionMetadata[] = []
+    
+    // Check if folderPath exists
+    if (!fs.existsSync(folderPath)) {
+      return { success: false, error: 'Folder does not exist' }
+    }
+    
+    const stats = fs.statSync(folderPath)
+    if (!stats.isDirectory()) {
+      return { success: false, error: 'Path is not a directory' }
+    }
+    
+    // Read the contents of the data folder
+    const entries = fs.readdirSync(folderPath, { withFileTypes: true })
+    
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        // This is a test session folder
+        const sessionPath = path.join(folderPath, entry.name)
+        const sessionFiles = fs.readdirSync(sessionPath)
+        
+        const runs: TestRunMetadata[] = []
+        
+        for (const file of sessionFiles) {
+          if (file.toLowerCase().endsWith('.csv')) {
+            const filePath = path.join(sessionPath, file)
+            runs.push({
+              id: pathToId(filePath),
+              name: path.basename(file, '.csv'),
+              filePath: filePath
+            })
+          }
+        }
+        
+        // Only add session if it has CSV files
+        if (runs.length > 0) {
+          sessions.push({
+            id: pathToId(sessionPath),
+            name: entry.name,
+            folderPath: sessionPath,
+            runs: runs.sort((a, b) => a.name.localeCompare(b.name))
+          })
+        }
+      } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.csv')) {
+        // CSV file directly in the data folder - use the folder name as session name
+        const folderName = path.basename(folderPath)
+        const rootSessionIndex = sessions.findIndex(s => s.folderPath === folderPath)
+        const filePath = path.join(folderPath, entry.name)
+        const runMeta: TestRunMetadata = {
+          id: pathToId(filePath),
+          name: path.basename(entry.name, '.csv'),
+          filePath: filePath
+        }
+        
+        if (rootSessionIndex >= 0) {
+          sessions[rootSessionIndex].runs.push(runMeta)
+        } else {
+          sessions.push({
+            id: pathToId(folderPath),
+            name: folderName,
+            folderPath: folderPath,
+            runs: [runMeta]
+          })
+        }
+      }
+    }
+    
+    // Sort sessions alphabetically
+    sessions.sort((a, b) => a.name.localeCompare(b.name))
+    
+    return { success: true, sessions }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+})
+
+/**
+ * Read a single CSV file and return its content as a string.
+ */
+ipcMain.handle('fs:read-csv', async (_, filePath: string) => {
+  try {
+    if (!fs.existsSync(filePath)) {
+      return { success: false, error: 'File does not exist' }
+    }
+    
+    const content = fs.readFileSync(filePath, 'utf-8')
+    return { success: true, content }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+})
+
+/**
+ * Show a folder picker dialog and return the selected path.
+ */
+ipcMain.handle('dialog:select-data-folder', async () => {
+  const result = await dialog.showOpenDialog(mainWindow!, {
+    title: 'Select Data Folder',
+    properties: ['openDirectory'],
+    buttonLabel: 'Select Folder'
+  })
+  
+  if (!result.canceled && result.filePaths.length > 0) {
+    return { success: true, folderPath: result.filePaths[0] }
   }
   return { success: false, canceled: true }
 })

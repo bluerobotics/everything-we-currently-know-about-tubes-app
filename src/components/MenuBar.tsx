@@ -1,16 +1,14 @@
-import { useState, useRef, useEffect } from 'react'
-import { Waves, ChevronRight, Check } from 'lucide-react'
-import { useAppStore } from '../stores/appStore'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { Waves, X } from 'lucide-react'
 
 interface MenuItemProps {
   label: string
   shortcut?: string
   onClick: () => void
   disabled?: boolean
-  checked?: boolean
 }
 
-function MenuItem({ label, shortcut, onClick, disabled, checked }: MenuItemProps) {
+function MenuItem({ label, shortcut, onClick, disabled }: MenuItemProps) {
   return (
     <button
       onClick={onClick}
@@ -22,9 +20,6 @@ function MenuItem({ label, shortcut, onClick, disabled, checked }: MenuItemProps
       }`}
     >
       <span className="flex items-center gap-2">
-        {checked !== undefined && (
-          <span className="w-4">{checked && <Check size={14} />}</span>
-        )}
         <span className="truncate">{label}</span>
       </span>
       {shortcut && (
@@ -34,67 +29,33 @@ function MenuItem({ label, shortcut, onClick, disabled, checked }: MenuItemProps
   )
 }
 
-interface SubMenuItemProps {
-  label: string
-  children: React.ReactNode
-  disabled?: boolean
-}
-
-function SubMenuItem({ label, children, disabled }: SubMenuItemProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const timeoutRef = useRef<number | null>(null)
-  
-  const handleMouseEnter = () => {
-    if (disabled) return
-    if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    setIsOpen(true)
-  }
-  
-  const handleMouseLeave = () => {
-    timeoutRef.current = window.setTimeout(() => setIsOpen(false), 150)
-  }
-  
-  return (
-    <div 
-      className="relative"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      <div
-        className={`w-full flex items-center justify-between px-3 py-1.5 text-sm text-left transition-colors ${
-          disabled 
-            ? 'text-vsc-fg-muted cursor-not-allowed' 
-            : 'text-vsc-fg hover:bg-vsc-selection'
-        }`}
-      >
-        <span className="truncate">{label}</span>
-        <ChevronRight size={14} className="text-vsc-fg-muted" />
-      </div>
-      
-      {isOpen && !disabled && (
-        <div className="absolute left-full top-0 ml-0.5 min-w-[200px] bg-vsc-dropdown border border-vsc-border rounded shadow-lg z-50">
-          {children}
-        </div>
-      )}
-    </div>
-  )
-}
-
 interface MenuBarProps {
   onNew: () => void
   onOpen: () => void
-  onSave: () => void
-  onSaveAs: () => void
+  onSaveWorkspace: () => void
+  onSaveWorkspaceAs: () => void
+  onLoadWorkspace: () => void
   onExport: () => void
   onToggleSidebar: () => void
-  onOpenRecent: (filePath: string) => void
   hasResults: boolean
+  currentWorkspacePath?: string | null
 }
 
-export function MenuBar({ onNew, onOpen, onSave, onSaveAs, onExport, onToggleSidebar, onOpenRecent, hasResults }: MenuBarProps) {
+export function MenuBar({ 
+  onNew, 
+  onOpen, 
+  onSaveWorkspace,
+  onSaveWorkspaceAs,
+  onLoadWorkspace,
+  onExport, 
+  onToggleSidebar, 
+  hasResults,
+  currentWorkspacePath,
+}: MenuBarProps) {
   const [openMenu, setOpenMenu] = useState<string | null>(null)
   const menuBarRef = useRef<HTMLDivElement>(null)
-  const { recentFiles, clearRecentFiles, autoSaveEnabled, setAutoSaveEnabled } = useAppStore()
+
+  const [showAboutDialog, setShowAboutDialog] = useState(false)
 
   // Close menu when clicking anywhere except on menu buttons or inside dropdown
   useEffect(() => {
@@ -129,6 +90,18 @@ export function MenuBar({ onNew, onOpen, onSave, onSaveAs, onExport, onToggleSid
     }
   }, [openMenu])
 
+  // Close about dialog on escape
+  const handleEscape = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape' && showAboutDialog) {
+      setShowAboutDialog(false)
+    }
+  }, [showAboutDialog])
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [handleEscape])
+
   // When hovering over a different menu button while a menu is open, switch to that menu
   const handleMenuMouseEnter = (menuName: string) => {
     if (openMenu && openMenu !== menuName) {
@@ -143,10 +116,6 @@ export function MenuBar({ onNew, onOpen, onSave, onSaveAs, onExport, onToggleSid
   const handleItemClick = (action: () => void) => {
     action()
     setOpenMenu(null)
-  }
-
-  const getFileName = (filePath: string) => {
-    return filePath.split(/[/\\]/).pop() || filePath
   }
 
   return (
@@ -176,42 +145,30 @@ export function MenuBar({ onNew, onOpen, onSave, onSaveAs, onExport, onToggleSid
           </button>
 
           {openMenu === 'file' && (
-            <div className="menu-dropdown absolute top-full left-0 mt-0.5 min-w-[220px] bg-vsc-dropdown border border-vsc-border rounded shadow-lg z-50">
-              <MenuItem label="New Project" shortcut="Ctrl+N" onClick={() => handleItemClick(onNew)} />
+            <div className="menu-dropdown absolute top-full left-0 mt-0.5 min-w-[260px] bg-vsc-dropdown border border-vsc-border rounded shadow-lg z-50">
+              <MenuItem label="New Workspace from Folder..." shortcut="Ctrl+O" onClick={() => handleItemClick(onOpen)} />
+              <MenuItem label="Open Workspace..." shortcut="Ctrl+Shift+O" onClick={() => handleItemClick(onLoadWorkspace)} />
               <div className="border-t border-vsc-border my-1" />
-              <MenuItem label="Open Project..." shortcut="Ctrl+O" onClick={() => handleItemClick(onOpen)} />
-              
-              {/* Recent Files Submenu */}
-              <SubMenuItem label="Open Recent" disabled={recentFiles.length === 0}>
-                {recentFiles.slice(0, 10).map((filePath, i) => (
-                  <MenuItem 
-                    key={i} 
-                    label={getFileName(filePath)} 
-                    onClick={() => handleItemClick(() => onOpenRecent(filePath))} 
-                  />
-                ))}
-                {recentFiles.length > 0 && (
-                  <>
-                    <div className="border-t border-vsc-border my-1" />
-                    <MenuItem 
-                      label="Clear Recent Files" 
-                      onClick={() => handleItemClick(clearRecentFiles)} 
-                    />
-                  </>
-                )}
-              </SubMenuItem>
-              
-              <div className="border-t border-vsc-border my-1" />
-              <MenuItem label="Save Project" shortcut="Ctrl+S" onClick={() => handleItemClick(onSave)} />
-              <MenuItem label="Save As..." shortcut="Ctrl+Shift+S" onClick={() => handleItemClick(onSaveAs)} />
               <MenuItem 
-                label="Autosave" 
-                checked={autoSaveEnabled}
-                onClick={() => setAutoSaveEnabled(!autoSaveEnabled)} 
+                label={currentWorkspacePath ? "Save Workspace" : "Save Workspace..."} 
+                shortcut="Ctrl+S" 
+                onClick={() => handleItemClick(onSaveWorkspace)} 
               />
+              <MenuItem 
+                label="Save Workspace As..." 
+                shortcut="Ctrl+Shift+S" 
+                onClick={() => handleItemClick(onSaveWorkspaceAs)} 
+              />
+              {currentWorkspacePath && (
+                <div className="px-3 py-1 text-xs text-vsc-fg-muted truncate" title={currentWorkspacePath}>
+                  {currentWorkspacePath.split(/[/\\]/).pop()}
+                </div>
+              )}
+              <div className="border-t border-vsc-border my-1" />
+              <MenuItem label="Clear Workspace" shortcut="Ctrl+N" onClick={() => handleItemClick(onNew)} />
               <div className="border-t border-vsc-border my-1" />
               <MenuItem 
-                label="Export Results as CSV..." 
+                label="Export Chart as PNG..." 
                 shortcut="Ctrl+E" 
                 onClick={() => handleItemClick(onExport)} 
                 disabled={!hasResults} 
@@ -240,6 +197,16 @@ export function MenuBar({ onNew, onOpen, onSave, onSaveAs, onExport, onToggleSid
             </div>
           )}
         </div>
+
+        {/* About Menu */}
+        <div className="relative h-full">
+          <button
+            onClick={() => setShowAboutDialog(true)}
+            className="px-3 h-full text-sm transition-colors text-vsc-fg-dim hover:text-vsc-fg hover:bg-vsc-highlight"
+          >
+            About
+          </button>
+        </div>
       </div>
       
       {/* Flexible drag region in the middle */}
@@ -247,6 +214,41 @@ export function MenuBar({ onNew, onOpen, onSave, onSaveAs, onExport, onToggleSid
       
       {/* Spacer for native window controls */}
       <div className="w-[140px] h-full flex-shrink-0" />
+
+      {/* About Dialog */}
+      {showAboutDialog && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowAboutDialog(false)}
+        >
+          <div 
+            className="bg-vsc-sidebar border border-vsc-border rounded-lg shadow-xl w-[400px] max-w-[90vw]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-vsc-border">
+              <div className="flex items-center gap-2">
+                <Waves size={20} className="text-vsc-accent" />
+                <span className="text-sm font-medium">About Thruster Viewer</span>
+              </div>
+              <button
+                onClick={() => setShowAboutDialog(false)}
+                className="text-vsc-fg-dim hover:text-vsc-fg p-1 rounded hover:bg-vsc-highlight"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <p className="text-sm text-vsc-fg-dim leading-relaxed">
+                A tool for visualizing and analyzing test data. Load CSV files from test runs 
+                to compare results across different configurations.
+              </p>
+              <div className="text-xs text-vsc-fg-muted">
+                Version 1.0.0
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

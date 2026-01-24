@@ -1,42 +1,91 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
-import { Play } from 'lucide-react'
-import { useAppStore, useProjectConfig, useProjectResults, SavedProject } from './stores/appStore'
-import { optimize, depthToPressure } from './lib/optimizer'
+import { useEffect, useState, useCallback } from 'react'
+import { FolderOpen, RotateCcw, FileUp } from 'lucide-react'
+import { useAppStore, useChartData, useActiveTab } from './stores/appStore'
 import { MenuBar } from './components/MenuBar'
 import { TabBar } from './components/TabBar'
 import { ActivityBar } from './components/ActivityBar'
 import { Sidebar } from './components/Sidebar'
-import { ResultsTable } from './components/ResultsTable'
+import { ViewLayoutPanel } from './components/ViewLayoutPanel'
 import { DetailsPanel } from './components/DetailsPanel'
 import { StatusBar } from './components/StatusBar'
+import { DataInspectorPanel, type InspectorData } from './components/DataInspectorPanel'
+import { parseCSVForInspector } from './lib/thrusterData'
 
 function App() {
   const {
     sidebarVisible,
     setSidebarWidth,
     toggleSidebar,
-    getMaterial,
-    setResults,
-    isOptimizing,
-    setIsOptimizing,
-    exportProject,
-    importProject,
-    markProjectSaved,
-    getActiveProject,
-    newProject,
-    addRecentFile,
-    getSelectedMaterialKeys,
-    autoSaveEnabled,
-    projects,
-    activeProjectId
+    selectAndLoadDataFolder,
+    loadDataFolder,
+    clearData,
+    getRunById,
+    // Workspace
+    lastWorkspacePath,
+    saveWorkspace,
+    saveWorkspaceAs,
+    loadWorkspace,
+    loadWorkspaceFromPath,
   } = useAppStore()
   
-  const config = useProjectConfig()
-  const { results } = useProjectResults()
+  // Get active tab data
+  const activeTab = useActiveTab()
+  const dataFolderPath = activeTab?.dataFolderPath || null
+  const isLoading = activeTab?.isLoading || false
+  const loadError = activeTab?.loadError || null
+  const testSessions = activeTab?.testSessions || []
+  const inspectedRunId = activeTab?.inspectedRunId || null
+  const inspectorPanelVisible = activeTab?.inspectorPanelVisible || false
+  const currentWorkspacePath = activeTab?.workspacePath || null
+  
+  const chartData = useChartData()
 
   const [isResizing, setIsResizing] = useState(false)
   const [statusMessage, setStatusMessage] = useState('')
-  const autoSaveTimerRef = useRef<number | null>(null)
+  
+  // Inspector data state
+  const [inspectorData, setInspectorData] = useState<InspectorData | null>(null)
+  const [isInspectorLoading, setIsInspectorLoading] = useState(false)
+
+  // Auto-load last workspace on startup (with hydration check)
+  const [hasHydrated, setHasHydrated] = useState(false)
+  const [hasTriedAutoLoad, setHasTriedAutoLoad] = useState(false)
+  
+  useEffect(() => {
+    // Wait a tick for Zustand to hydrate from localStorage
+    const timer = setTimeout(() => {
+      setHasHydrated(true)
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [])
+  
+  // Auto-load last workspace or folder
+  useEffect(() => {
+    if (hasHydrated && !hasTriedAutoLoad && !isLoading && window.electronAPI) {
+      setHasTriedAutoLoad(true)
+      
+      // Try to load last workspace first
+      if (lastWorkspacePath) {
+        setStatusMessage('Loading last workspace...')
+        loadWorkspaceFromPath(lastWorkspacePath).then(success => {
+          if (success) {
+            setStatusMessage('Workspace loaded')
+            setTimeout(() => setStatusMessage(''), 2000)
+          } else {
+            // Fall back to loading just the data folder with restored selections
+            if (dataFolderPath && testSessions.length === 0) {
+              setStatusMessage('Restoring last session...')
+              loadDataFolder(dataFolderPath, { restoreSelections: true })
+            }
+          }
+        })
+      } else if (dataFolderPath && testSessions.length === 0) {
+        // No workspace, but we have a folder path - restore selections from hydrated state
+        setStatusMessage('Restoring last session...')
+        loadDataFolder(dataFolderPath, { restoreSelections: true })
+      }
+    }
+  }, [hasHydrated, hasTriedAutoLoad, lastWorkspacePath, dataFolderPath, testSessions.length, isLoading, loadDataFolder, loadWorkspaceFromPath])
 
   // Handle sidebar resize
   useEffect(() => {
@@ -66,210 +115,69 @@ function App() {
     }
   }, [isResizing, setSidebarWidth])
 
-  // Save config handler - saves to existing path if available
-  const handleSaveConfig = useCallback(async () => {
-    const project = getActiveProject()
-    const projectData = exportProject()
-    if (!projectData) return
-    
-    if (!window.electronAPI) {
-      // Fallback for browser - download as file
-      const fileName = `${projectData.name.replace(/[^a-z0-9]/gi, '-')}.thruster`
-      const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = fileName
-      a.click()
-      URL.revokeObjectURL(url)
-      markProjectSaved(fileName)
-      setStatusMessage('Project downloaded')
-      setTimeout(() => setStatusMessage(''), 3000)
-      return
-    }
+  // Load data folder handler
+  const handleOpenFolder = useCallback(async () => {
+    setStatusMessage('Opening folder...')
+    await selectAndLoadDataFolder()
+    setStatusMessage('')
+  }, [selectAndLoadDataFolder])
 
-    // If project has existing path, save directly to that path
-    if (project?.filePath) {
-      const result = await window.electronAPI.saveToPath(JSON.stringify(projectData, null, 2), project.filePath)
-      if (result.success) {
-        markProjectSaved(project.filePath)
-        setStatusMessage(`Saved to ${project.filePath}`)
-        setTimeout(() => setStatusMessage(''), 3000)
-      }
+  // Reload last folder
+  const handleReloadFolder = useCallback(async () => {
+    if (dataFolderPath) {
+      setStatusMessage('Reloading data...')
+      clearData()
+      await loadDataFolder(dataFolderPath)
+      setStatusMessage('')
+    }
+  }, [dataFolderPath, clearData, loadDataFolder])
+
+  // Stub handlers for menu bar compatibility
+  const handleNew = useCallback(() => {
+    clearData()
+    setStatusMessage('Cleared all data')
+    setTimeout(() => setStatusMessage(''), 2000)
+  }, [clearData])
+
+  // Workspace handlers
+  const handleSaveWorkspace = useCallback(async () => {
+    setStatusMessage('Saving workspace...')
+    const success = await saveWorkspace()
+    if (success) {
+      setStatusMessage('Workspace saved')
     } else {
-      // Otherwise show save dialog
-      const result = await window.electronAPI.saveConfig(JSON.stringify(projectData, null, 2), `${projectData.name}.thruster`)
-      if (result.success && result.filePath) {
-        markProjectSaved(result.filePath)
-        setStatusMessage(`Saved to ${result.filePath}`)
-        setTimeout(() => setStatusMessage(''), 3000)
-      }
+      setStatusMessage('Failed to save workspace')
     }
-  }, [exportProject, markProjectSaved, getActiveProject])
+    setTimeout(() => setStatusMessage(''), 2000)
+  }, [saveWorkspace])
 
-  // Save As... handler - always shows dialog
-  const handleSaveConfigAs = useCallback(async () => {
-    const projectData = exportProject()
-    if (!projectData) return
-    
-    if (!window.electronAPI) {
-      // Fallback for browser - same as regular save
-      const fileName = `${projectData.name.replace(/[^a-z0-9]/gi, '-')}.thruster`
-      const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = fileName
-      a.click()
-      URL.revokeObjectURL(url)
-      markProjectSaved(fileName)
-      setStatusMessage('Project downloaded')
-      setTimeout(() => setStatusMessage(''), 3000)
-      return
+  const handleSaveWorkspaceAs = useCallback(async () => {
+    setStatusMessage('Saving workspace...')
+    const success = await saveWorkspaceAs()
+    if (success) {
+      setStatusMessage('Workspace saved')
+    } else {
+      setStatusMessage('Save cancelled')
     }
+    setTimeout(() => setStatusMessage(''), 2000)
+  }, [saveWorkspaceAs])
 
-    const result = await window.electronAPI.saveConfig(JSON.stringify(projectData, null, 2), `${projectData.name}.thruster`)
-    if (result.success && result.filePath) {
-      markProjectSaved(result.filePath)
-      setStatusMessage(`Saved to ${result.filePath}`)
-      setTimeout(() => setStatusMessage(''), 3000)
+  const handleLoadWorkspace = useCallback(async () => {
+    setStatusMessage('Loading workspace...')
+    const success = await loadWorkspace()
+    if (success) {
+      setStatusMessage('Workspace loaded')
+    } else {
+      setStatusMessage('Load cancelled')
     }
-  }, [exportProject, markProjectSaved])
+    setTimeout(() => setStatusMessage(''), 2000)
+  }, [loadWorkspace])
 
-  // Autosave - only saves if project has existing filePath (has been saved before)
-  const autoSave = useCallback(async () => {
-    const project = getActiveProject()
-    if (!project || !project.modified || !project.filePath) return
-    if (!window.electronAPI) return
-    
-    const projectData = exportProject()
-    if (!projectData) return
-
-    // Save directly to existing path
-    try {
-      const result = await window.electronAPI.saveToPath(JSON.stringify(projectData, null, 2), project.filePath)
-      if (result.success) {
-        markProjectSaved(project.filePath)
-        setStatusMessage('Autosaved')
-        setTimeout(() => setStatusMessage(''), 2000)
-      }
-    } catch {
-      // Silent fail for autosave
-    }
-  }, [getActiveProject, exportProject, markProjectSaved])
-
-  // Load config handler
-  const handleLoadConfig = async () => {
-    if (!window.electronAPI) {
-      // Fallback for browser - use file input
-      const input = document.createElement('input')
-      input.type = 'file'
-      input.accept = '.thruster,.json'
-      input.onchange = async (e) => {
-        const file = (e.target as HTMLInputElement).files?.[0]
-        if (file) {
-          const text = await file.text()
-          try {
-            const saved = JSON.parse(text) as SavedProject
-            importProject(saved)
-            setStatusMessage('Project loaded')
-            setTimeout(() => setStatusMessage(''), 3000)
-          } catch {
-            setStatusMessage('Error: Invalid project file')
-            setTimeout(() => setStatusMessage(''), 3000)
-          }
-        }
-      }
-      input.click()
-      return
-    }
-
-    const result = await window.electronAPI.loadConfig()
-    if (result.success && result.data && result.filePath) {
-      try {
-        const saved = JSON.parse(result.data) as SavedProject
-        importProject(saved, result.filePath)
-        addRecentFile(result.filePath)
-        setStatusMessage(`Loaded from ${result.filePath}`)
-        setTimeout(() => setStatusMessage(''), 3000)
-      } catch {
-        setStatusMessage('Error: Invalid project file')
-        setTimeout(() => setStatusMessage(''), 3000)
-      }
-    }
-  }
-
-  // Open recent file handler
-  const handleOpenRecent = async (filePath: string) => {
-    if (!window.electronAPI) {
-      setStatusMessage('Recent files only available in Electron')
-      setTimeout(() => setStatusMessage(''), 3000)
-      return
-    }
-
-    const result = await window.electronAPI.loadRecentFile(filePath)
-    if (result.success && result.data) {
-      try {
-        const saved = JSON.parse(result.data) as SavedProject
-        importProject(saved, filePath)
-        addRecentFile(filePath)
-        setStatusMessage(`Loaded from ${filePath}`)
-        setTimeout(() => setStatusMessage(''), 3000)
-      } catch {
-        setStatusMessage('Error: Invalid project file')
-        setTimeout(() => setStatusMessage(''), 3000)
-      }
-    } else if (result.error) {
-      setStatusMessage(`Error: ${result.error}`)
-      setTimeout(() => setStatusMessage(''), 3000)
-    }
-  }
-
-  // Export results handler
-  const handleExportResults = async () => {
-    const project = getActiveProject()
-    if (!project || project.results.length === 0) {
-      setStatusMessage('No results to export')
-      setTimeout(() => setStatusMessage(''), 3000)
-      return
-    }
-
-    // Create CSV content
-    const headers = ['Rank', 'Diameter (mm)', 'Length (mm)', 'Wall (mm)', 'Endcap (mm)', 
-                     'Mass (g)', 'Buoyancy (g)', 'Ratio', 'Method']
-    const rows = project.results.map(r => [
-      r.rank,
-      r.diameterMm.toFixed(1),
-      r.lengthMm.toFixed(1),
-      r.wallThicknessMm.toFixed(2),
-      r.endcapThicknessMm.toFixed(2),
-      (r.massKg * 1000).toFixed(1),
-      (r.netBuoyancyKg * 1000).toFixed(1),
-      r.buoyancyRatio.toFixed(2),
-      r.wallMethod
-    ])
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
-
-    if (!window.electronAPI) {
-      // Fallback for browser
-      const blob = new Blob([csv], { type: 'text/csv' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'thruster-results.csv'
-      a.click()
-      URL.revokeObjectURL(url)
-      setStatusMessage('Results downloaded')
-      setTimeout(() => setStatusMessage(''), 3000)
-      return
-    }
-
-    const result = await window.electronAPI.exportResults(csv)
-    if (result.success) {
-      setStatusMessage(`Exported to ${result.filePath}`)
-      setTimeout(() => setStatusMessage(''), 3000)
-    }
-  }
+  const handleExport = useCallback(() => {
+    // TODO: Could implement chart export here
+    setStatusMessage('Export not yet implemented')
+    setTimeout(() => setStatusMessage(''), 2000)
+  }, [])
 
   // Listen for menu events
   useEffect(() => {
@@ -280,73 +188,84 @@ function App() {
         case 'menu:toggle-sidebar':
           toggleSidebar()
           break
-        case 'menu:save-config':
-          handleSaveConfig()
-          break
         case 'menu:load-config':
-          handleLoadConfig()
-          break
-        case 'menu:export':
-          handleExportResults()
+          handleOpenFolder()
           break
       }
     })
 
     return cleanup
-  }, [toggleSidebar])
-
-  // Autosave effect - debounced save when project is modified
-  useEffect(() => {
-    const project = projects.find(p => p.id === activeProjectId)
-    if (!autoSaveEnabled || !project?.modified || !project?.filePath) {
-      return
-    }
-
-    // Clear any existing timer
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current)
-    }
-
-    // Set a new timer for autosave (2 second debounce)
-    autoSaveTimerRef.current = window.setTimeout(() => {
-      autoSave()
-    }, 2000)
-
-    return () => {
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current)
-      }
-    }
-  }, [autoSaveEnabled, projects, activeProjectId, autoSave])
+  }, [toggleSidebar, handleOpenFolder])
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
+        // Ctrl+Shift combinations
+        if (e.shiftKey) {
+          switch (e.key.toLowerCase()) {
+            case 's':
+              e.preventDefault()
+              handleSaveWorkspaceAs()
+              break
+            case 'o':
+              e.preventDefault()
+              handleLoadWorkspace()
+              break
+          }
+          return
+        }
+        
+        // Ctrl only combinations
         switch (e.key.toLowerCase()) {
-          case 'n':
-            e.preventDefault()
-            newProject()
-            break
           case 'o':
             e.preventDefault()
-            handleLoadConfig()
-            break
-          case 's':
-            e.preventDefault()
-            if (e.shiftKey) {
-              handleSaveConfigAs()
-            } else {
-              handleSaveConfig()
-            }
-            break
-          case 'e':
-            e.preventDefault()
-            handleExportResults()
+            handleOpenFolder()
             break
           case 'b':
             e.preventDefault()
             toggleSidebar()
+            break
+          case 'r':
+            e.preventDefault()
+            handleReloadFolder()
+            break
+          case 's':
+            e.preventDefault()
+            handleSaveWorkspace()
+            break
+        }
+      }
+      
+      // Graph config shortcuts (no modifier)
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        const { setDisplayConfig, setShowPoints, setSmoothLines, getActiveTab } = useAppStore.getState()
+        const activeTabData = getActiveTab()
+        if (!activeTabData) return
+        
+        const { chartConfig } = activeTabData
+        const { display } = chartConfig
+        switch (e.key.toLowerCase()) {
+          case 'g':
+            if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'SELECT') {
+              const newShowGrid = !(display.showGridX && display.showGridY)
+              setDisplayConfig({ showGridX: newShowGrid, showGridY: newShowGrid })
+            }
+            break
+          case 'p':
+            if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'SELECT') {
+              // Toggle points for all series
+              const hasPoints = Object.values(chartConfig.seriesConfigs).some(s => s.showPoints)
+              setShowPoints(!hasPoints)
+            }
+            break
+          case 's':
+            if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'SELECT') {
+              e.preventDefault()
+              // Toggle smooth lines for all series
+              const hasSmooth = Object.values(chartConfig.seriesConfigs).some(s => s.interpolation === 'spline')
+              setSmoothLines(!hasSmooth)
+            }
             break
         }
       }
@@ -354,57 +273,69 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [toggleSidebar, results, handleSaveConfig, handleSaveConfigAs, newProject])
+  }, [toggleSidebar, handleOpenFolder, handleReloadFolder, handleSaveWorkspace, handleSaveWorkspaceAs, handleLoadWorkspace])
 
-  // Run optimization
-  const runOptimization = () => {
-    setIsOptimizing(true)
-    setStatusMessage(config.selectedMaterial === 'ALL' ? 'Comparing all materials...' : 'Running optimization...')
-
-    // Use setTimeout to allow UI to update
-    setTimeout(() => {
-      const pressure = config.useDirectPressure
-        ? config.pressureMpa
-        : depthToPressure(config.depthM, config.waterDensity)
-
-      const optimizationResults = optimize({
-        pressureMpa: pressure,
-        material: getMaterial(),
-        materialKey: config.selectedMaterial,
-        selectedMaterials: getSelectedMaterialKeys(),
-        safetyFactor: config.safetyFactor,
-        minDiameterMm: config.minDiameterMm,
-        maxDiameterMm: config.maxDiameterMm,
-        minLengthMm: config.minLengthMm,
-        maxLengthMm: config.maxLengthMm,
-        diameterStepMm: config.diameterStepMm,
-        lengthStepMm: config.lengthStepMm,
-        waterDensity: config.waterDensity,
-        box: config.box,
-        forcedWallThicknessMm: config.forcedWallThicknessMm,
-        forcedEndcapThicknessMm: config.forcedEndcapThicknessMm,
-        endcapConstraint: config.endcapConstraint
-      })
-
-      const selectedCount = getSelectedMaterialKeys().length
-      setResults(optimizationResults)
-      setIsOptimizing(false)
-      setStatusMessage(`Found ${optimizationResults.length} results${config.selectedMaterial === 'ALL' ? ` across ${selectedCount} materials` : ''}`)
+  // Update status when loading
+  useEffect(() => {
+    if (isLoading) {
+      setStatusMessage('Loading data...')
+    } else if (loadError) {
+      setStatusMessage(`Error: ${loadError}`)
+      setTimeout(() => setStatusMessage(''), 5000)
+    } else if (testSessions.length > 0) {
+      const totalRuns = testSessions.reduce((acc, s) => acc + s.runs.length, 0)
+      setStatusMessage(`Loaded ${testSessions.length} session(s) with ${totalRuns} runs`)
       setTimeout(() => setStatusMessage(''), 3000)
-    }, 50)
-  }
+    }
+  }, [isLoading, loadError, testSessions.length])
+
+  // Load inspector data when inspected run changes
+  useEffect(() => {
+    if (!inspectedRunId) {
+      setInspectorData(null)
+      return
+    }
+
+    const run = getRunById(inspectedRunId)
+    if (!run) {
+      setInspectorData(null)
+      return
+    }
+
+    // Load CSV content for inspection
+    const loadInspectorData = async () => {
+      if (!window.electronAPI) return
+      
+      setIsInspectorLoading(true)
+      try {
+        const result = await window.electronAPI.readCSV(run.filePath)
+        if (result.success && result.content) {
+          const data = parseCSVForInspector(result.content)
+          setInspectorData(data)
+        }
+      } catch (error) {
+        console.error('Failed to load inspector data:', error)
+        setInspectorData(null)
+      } finally {
+        setIsInspectorLoading(false)
+      }
+    }
+
+    loadInspectorData()
+  }, [inspectedRunId, getRunById])
 
   return (
     <div className="h-screen flex flex-col bg-vsc-bg overflow-hidden">
       <MenuBar
-        onNew={newProject}
-        onOpen={handleLoadConfig}
-        onSave={handleSaveConfig}
-        onSaveAs={handleSaveConfigAs}
-        onExport={handleExportResults}
+        onNew={handleNew}
+        onOpen={handleOpenFolder}
+        onSaveWorkspace={handleSaveWorkspace}
+        onSaveWorkspaceAs={handleSaveWorkspaceAs}
+        onLoadWorkspace={handleLoadWorkspace}
+        onExport={handleExport}
         onToggleSidebar={toggleSidebar}
-        onOpenRecent={handleOpenRecent}
-        hasResults={results.length > 0}
+        hasResults={chartData.length > 0}
+        currentWorkspacePath={currentWorkspacePath}
       />
       <TabBar />
 
@@ -427,24 +358,54 @@ function App() {
           {/* Toolbar */}
           <div className="h-10 bg-vsc-bg-dark border-b border-vsc-border flex items-center justify-between px-4 flex-shrink-0">
             <div className="text-sm text-vsc-fg-dim">
-              {statusMessage || 'Thruster Viewer'}
+              {statusMessage || (dataFolderPath ? `Folder: ${dataFolderPath}` : 'Thruster Viewer')}
             </div>
-            <button
-              onClick={runOptimization}
-              disabled={isOptimizing}
-              className="flex items-center gap-2 px-4 py-1.5 bg-vsc-accent hover:bg-vsc-accent-hover disabled:opacity-50 text-white rounded text-sm font-medium transition-colors"
-            >
-              <Play size={14} />
-              {isOptimizing ? 'Running...' : 'Run Analysis'}
-            </button>
+            <div className="flex items-center gap-2">
+              {dataFolderPath && (
+                <button
+                  onClick={handleReloadFolder}
+                  disabled={isLoading}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-vsc-input hover:bg-vsc-border-light border border-vsc-border text-vsc-fg rounded text-sm transition-colors disabled:opacity-50"
+                  title="Reload folder (Ctrl+R)"
+                >
+                  <RotateCcw size={14} />
+                  Reload
+                </button>
+              )}
+              <button
+                onClick={handleLoadWorkspace}
+                disabled={isLoading}
+                className="flex items-center gap-2 px-4 py-1.5 bg-vsc-input hover:bg-vsc-border-light border border-vsc-border text-vsc-fg rounded text-sm transition-colors disabled:opacity-50"
+                title="Open existing workspace (Ctrl+Shift+O)"
+              >
+                <FileUp size={14} />
+                Open Workspace
+              </button>
+              <button
+                onClick={handleOpenFolder}
+                disabled={isLoading}
+                className="flex items-center gap-2 px-4 py-1.5 bg-vsc-accent hover:bg-vsc-accent-hover disabled:opacity-50 text-white rounded text-sm font-medium transition-colors"
+                title="Create new workspace from folder (Ctrl+O)"
+              >
+                <FolderOpen size={14} />
+                {isLoading ? 'Loading...' : 'New from Folder'}
+              </button>
+            </div>
           </div>
 
-          {/* Content area with results */}
-          <div className="flex-1 flex overflow-hidden min-h-0">
-            {/* Results table - now takes full width */}
-            <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-              <ResultsTable />
+          {/* Content area with chart */}
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+            <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+              <ViewLayoutPanel />
             </div>
+            
+            {/* Data Inspector Panel */}
+            {inspectorPanelVisible && (
+              <DataInspectorPanel
+                inspectorData={inspectorData}
+                isLoading={isInspectorLoading}
+              />
+            )}
           </div>
 
           {/* Details panel */}

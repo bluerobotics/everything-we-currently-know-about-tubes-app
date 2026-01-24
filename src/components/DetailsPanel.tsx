@@ -1,4 +1,4 @@
-import { useProjectResults, useProjectConfig } from '../stores/appStore'
+import { useAppStore, useSelectedRunsStats, useChartData, useActiveTab, Y_AXIS_LABELS } from '../stores/appStore'
 
 function DetailRow({ label, value, unit = '' }: { label: string; value: string | number; unit?: string }) {
   return (
@@ -13,94 +13,110 @@ function DetailRow({ label, value, unit = '' }: { label: string; value: string |
 }
 
 export function DetailsPanel() {
-  const { results, selectedResultIndex } = useProjectResults()
-  const config = useProjectConfig()
+  const { hoveredDataPoint } = useAppStore()
+  const activeTab = useActiveTab()
+  const stats = useSelectedRunsStats()
+  const chartData = useChartData()
+  
+  const selectedRunIds = activeTab?.selectedRunIds || []
+  const testSessions = activeTab?.testSessions || []
+  const yAxisMetric = activeTab?.chartConfig.yAxis.column || 'thrust'
 
-  if (results.length === 0 || selectedResultIndex === null) {
+  // Get current metric label
+  const metricLabel = Y_AXIS_LABELS[yAxisMetric]
+  const metricUnit = metricLabel.match(/\(([^)]+)\)/)?.[1] || ''
+
+  // No data loaded
+  if (testSessions.length === 0) {
     return (
-      <div className="h-32 border-t border-vsc-border bg-vsc-panel p-3 flex-shrink-0 flex items-center justify-center">
-        <p className="text-vsc-fg-dim text-sm">Select a result to view details</p>
+      <div className="h-28 border-t border-vsc-border bg-vsc-panel p-3 flex-shrink-0 flex items-center justify-center">
+        <p className="text-vsc-fg-dim text-sm">Load a data folder to view test runs</p>
       </div>
     )
   }
 
-  const r = results[selectedResultIndex]
-  const showPacking = config.box?.enabled && r.packingCount !== undefined
-  const showMaterial = config.selectedMaterial === 'ALL' && r.materialName
+  // Data loaded but no selection
+  if (selectedRunIds.length === 0) {
+    return (
+      <div className="h-28 border-t border-vsc-border bg-vsc-panel p-3 flex-shrink-0 flex items-center justify-center">
+        <p className="text-vsc-fg-dim text-sm">Select test runs from the browser to view data</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="h-32 border-t border-vsc-border bg-vsc-panel overflow-hidden flex-shrink-0">
+    <div className="h-28 border-t border-vsc-border bg-vsc-panel overflow-hidden flex-shrink-0">
       <div className="px-3 py-2">
-        {/* Material name banner when comparing all */}
-        {showMaterial && (
-          <div className="text-xs font-medium text-vsc-accent mb-1">
-            {r.materialName}
-          </div>
-        )}
-        <div className={`grid gap-4 ${showPacking ? 'grid-cols-5' : 'grid-cols-4'}`}>
-          {/* Dimensions */}
+        <div className="grid grid-cols-4 gap-4">
+          {/* Selection Info */}
           <div>
             <h3 className="text-xs font-semibold text-vsc-accent mb-1 uppercase tracking-wide">
-              Dimensions
+              Selection
             </h3>
             <div className="space-y-0">
-              <DetailRow label="Outer Dia" value={r.diameterMm} unit="mm" />
-              <DetailRow label="Inner Dia" value={r.innerDiameterMm} unit="mm" />
-              <DetailRow label="Length" value={r.lengthMm} unit="mm" />
-              <DetailRow label="Wall / Cap" value={`${r.wallThicknessMm.toFixed(1)} / ${r.endcapThicknessMm.toFixed(1)}`} unit="mm" />
+              <DetailRow label="Selected runs" value={selectedRunIds.length} />
+              <DetailRow label="Loaded runs" value={stats?.loadedCount || 0} />
+              <DetailRow label="Total points" value={stats?.totalPoints || 0} />
             </div>
           </div>
 
-          {/* Volume */}
+          {/* Current Metric Stats */}
           <div>
             <h3 className="text-xs font-semibold text-vsc-accent mb-1 uppercase tracking-wide">
-              Volume
+              {metricLabel.split(' (')[0]}
             </h3>
             <div className="space-y-0">
-              <DetailRow label="Outer" value={r.outerVolumeL} unit="L" />
-              <DetailRow label="Inner" value={r.innerVolumeL} unit="L" />
-              <DetailRow label="Material" value={r.materialVolumeL} unit="L" />
+              <DetailRow label="Min" value={stats?.min ?? '-'} unit={metricUnit} />
+              <DetailRow label="Max" value={stats?.max ?? '-'} unit={metricUnit} />
+              <DetailRow label="Average" value={stats?.avg ?? '-'} unit={metricUnit} />
             </div>
           </div>
 
-          {/* Mass */}
+          {/* Hovered Point */}
           <div>
             <h3 className="text-xs font-semibold text-vsc-accent mb-1 uppercase tracking-wide">
-              Mass
+              Cursor
             </h3>
-            <div className="space-y-0">
-              <DetailRow label="Cylinder" value={r.massKg * 1000} unit="g" />
-              <DetailRow label="Displaced" value={r.displacedWaterKg * 1000} unit="g" />
-            </div>
-          </div>
-
-          {/* Buoyancy */}
-          <div>
-            <h3 className="text-xs font-semibold text-vsc-accent mb-1 uppercase tracking-wide">
-              Buoyancy
-            </h3>
-            <div className="space-y-0">
-              <DetailRow label="Net" value={r.netBuoyancyKg * 1000} unit="g" />
-              <DetailRow label="Force" value={r.netBuoyancyN} unit="N" />
-              <DetailRow label="Ratio" value={r.buoyancyRatio} unit=":1" />
-              <DetailRow label="Method" value={r.wallMethod} />
-            </div>
-          </div>
-
-          {/* Packing (when enabled) */}
-          {showPacking && (
-            <div>
-              <h3 className="text-xs font-semibold text-vsc-accent mb-1 uppercase tracking-wide">
-                Packing
-              </h3>
+            {hoveredDataPoint ? (
               <div className="space-y-0">
-                <DetailRow label="Count" value={r.packingCount || 0} unit="cyl" />
-                <DetailRow label="Axis" value={r.packingOrientation?.toUpperCase() || '-'} />
-                <DetailRow label="Total Mass" value={(r.totalMassKg || 0) * 1000} unit="g" />
-                <DetailRow label="Total Buoy" value={(r.totalBuoyancyKg || 0) * 1000} unit="g" />
+                <DetailRow label="Time" value={hoveredDataPoint.time} unit="s" />
+                <DetailRow label="PWM" value={hoveredDataPoint.pwm} unit="μs" />
+                <DetailRow label={metricLabel.split(' (')[0]} value={hoveredDataPoint[yAxisMetric]} unit={metricUnit} />
               </div>
+            ) : (
+              <div className="text-xs text-vsc-fg-muted py-1">
+                Hover over chart to see values
+              </div>
+            )}
+          </div>
+
+          {/* Selected Runs */}
+          <div>
+            <h3 className="text-xs font-semibold text-vsc-accent mb-1 uppercase tracking-wide">
+              Runs
+            </h3>
+            <div className="space-y-0.5 max-h-16 overflow-y-auto">
+              {chartData.slice(0, 5).map((run) => (
+                <div key={run.id} className="flex items-center gap-1.5 text-xs">
+                  <span 
+                    className="w-2 h-2 rounded-full flex-shrink-0" 
+                    style={{ backgroundColor: run.color }} 
+                  />
+                  <span className="text-vsc-fg truncate">{run.name}</span>
+                </div>
+              ))}
+              {chartData.length > 5 && (
+                <div className="text-xs text-vsc-fg-muted">
+                  +{chartData.length - 5} more
+                </div>
+              )}
+              {chartData.length === 0 && selectedRunIds.length > 0 && (
+                <div className="text-xs text-vsc-fg-muted">
+                  Loading data...
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

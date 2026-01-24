@@ -1,32 +1,35 @@
 import { useAppStore } from '../stores/appStore'
-import { ParametersView } from './sidebar/ParametersView'
-import { MaterialsView } from './sidebar/MaterialsView'
-import { InfoView } from './sidebar/InfoView'
+import { DataSeriesView } from './sidebar/DataSeriesView'
+import { GraphConfigView } from './sidebar/GraphConfigView'
+import { LayoutConfigView } from './sidebar/LayoutConfigView'
 
 export function Sidebar() {
-  const { activeView, sidebarWidth } = useAppStore()
+  const { 
+    activeView, 
+    sidebarWidth,
+  } = useAppStore()
 
   const renderView = () => {
     switch (activeView) {
-      case 'parameters':
-        return <ParametersView />
-      case 'materials':
-        return <MaterialsView />
-      case 'info':
-        return <InfoView />
+      case 'series':
+        return <DataSeriesView />
+      case 'config':
+        return <GraphConfigView />
+      case 'layout':
+        return <LayoutConfigView />
       default:
-        return <ParametersView />
+        return <DataSeriesView />
     }
   }
 
   const getTitle = () => {
     switch (activeView) {
-      case 'parameters':
-        return 'OPTIMIZATION PARAMETERS'
-      case 'materials':
-        return 'MATERIAL PROPERTIES'
-      case 'info':
-        return 'INFORMATION'
+      case 'series':
+        return 'DATA SERIES'
+      case 'config':
+        return 'GRAPH SETTINGS'
+      case 'layout':
+        return 'VIEW LAYOUT'
       default:
         return ''
     }
@@ -46,4 +49,3 @@ export function Sidebar() {
     </div>
   )
 }
-

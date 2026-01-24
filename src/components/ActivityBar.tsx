@@ -1,4 +1,4 @@
-import { Settings, Sliders, Info } from 'lucide-react'
+import { Database, SlidersHorizontal, LayoutGrid } from 'lucide-react'
 import { useAppStore, SidebarView } from '../stores/appStore'
 
 interface ActivityItemProps {
@@ -30,21 +30,20 @@ export function ActivityBar() {
   return (
     <div className="w-12 bg-vsc-activitybar flex flex-col border-r border-vsc-border">
       <ActivityItem
-        icon={<Sliders size={24} />}
-        view="parameters"
-        title="Parameters"
+        icon={<Database size={24} />}
+        view="series"
+        title="Data Series"
       />
       <ActivityItem
-        icon={<Settings size={24} />}
-        view="materials"
-        title="Materials"
+        icon={<SlidersHorizontal size={24} />}
+        view="config"
+        title="Graph Settings"
       />
       <ActivityItem
-        icon={<Info size={24} />}
-        view="info"
-        title="Information"
+        icon={<LayoutGrid size={24} />}
+        view="layout"
+        title="View Layout"
       />
     </div>
   )
 }
-

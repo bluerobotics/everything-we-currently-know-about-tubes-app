@@ -1,0 +1,540 @@
+{
+  "version": 3,
+  "dataFolderPath": "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20",
+  "selectedRunPaths": [],
+  "selectedSegmentPaths": [
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-0",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-1",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-2",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-3",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-4",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-5",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-6",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-7",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-8",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-9",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-10",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-11",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-12",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-13",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-14",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-15",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-16",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-17",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-18",
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-19"
+  ],
+  "expandedRunPaths": [],
+  "seriesConfigsByPath": {
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv": {
+      "lineWidth": 2,
+      "dashPattern": "solid",
+      "showPoints": false,
+      "pointSize": 4,
+      "pointShape": "circle",
+      "fillArea": false,
+      "fillOpacity": 20,
+      "interpolation": "spline",
+      "connectGaps": true,
+      "visible": true,
+      "yAxisId": "y",
+      "color": "#4fc3f7"
+    },
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW02.csv": {
+      "lineWidth": 2,
+      "dashPattern": "solid",
+      "showPoints": false,
+      "pointSize": 4,
+      "pointShape": "circle",
+      "fillArea": false,
+      "fillOpacity": 20,
+      "interpolation": "spline",
+      "connectGaps": true,
+      "visible": true,
+      "yAxisId": "y",
+      "color": "#81c784"
+    },
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW03.csv": {
+      "lineWidth": 2,
+      "dashPattern": "solid",
+      "showPoints": false,
+      "pointSize": 4,
+      "pointShape": "circle",
+      "fillArea": false,
+      "fillOpacity": 20,
+      "interpolation": "spline",
+      "connectGaps": true,
+      "visible": true,
+      "yAxisId": "y",
+      "color": "#ffb74d"
+    },
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW01.csv": {
+      "lineWidth": 2,
+      "dashPattern": "solid",
+      "showPoints": false,
+      "pointSize": 4,
+      "pointShape": "circle",
+      "fillArea": false,
+      "fillOpacity": 20,
+      "interpolation": "spline",
+      "connectGaps": true,
+      "visible": true,
+      "yAxisId": "y",
+      "color": "#f06292"
+    },
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv": {
+      "lineWidth": 2,
+      "dashPattern": "solid",
+      "showPoints": false,
+      "pointSize": 4,
+      "pointShape": "circle",
+      "fillArea": false,
+      "fillOpacity": 20,
+      "interpolation": "spline",
+      "connectGaps": true,
+      "visible": true,
+      "yAxisId": "y",
+      "color": "#ba68c8"
+    },
+    "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW03.csv": {
+      "lineWidth": 2,
+      "dashPattern": "solid",
+      "showPoints": false,
+      "pointSize": 4,
+      "pointShape": "circle",
+      "fillArea": false,
+      "fillOpacity": 20,
+      "interpolation": "spline",
+      "connectGaps": true,
+      "visible": true,
+      "yAxisId": "y",
+      "color": "#4db6ac"
+    }
+  },
+  "chartConfig": {
+    "xAxis": {
+      "column": "time",
+      "scaleType": "linear",
+      "autoRange": true,
+      "min": null,
+      "max": null,
+      "labelFormat": "decimal1",
+      "label": "Time (s)",
+      "showAxis": true,
+      "cursorSnapEnabled": false
+    },
+    "yAxis": {
+      "column": "thrust",
+      "scaleType": "linear",
+      "autoRange": true,
+      "min": null,
+      "max": null,
+      "labelFormat": "decimal2",
+      "label": "Thrust (g)",
+      "showAxis": true
+    },
+    "y2Axis": {
+      "enabled": false,
+      "column": "current",
+      "scaleType": "linear",
+      "autoRange": true,
+      "min": null,
+      "max": null,
+      "labelFormat": "decimal2",
+      "label": "Current (A)",
+      "showAxis": true
+    },
+    "display": {
+      "showGridX": true,
+      "showGridY": true,
+      "gridStyle": "solid",
+      "gridOpacity": 60,
+      "legendPosition": "bottom",
+      "legendLive": true,
+      "tooltipMode": "nearest",
+      "showCrosshair": true,
+      "zoomMode": "xy",
+      "backgroundColor": "#1e1e1e"
+    },
+    "data": {
+      "duplicateColumnHandling": "last",
+      "segmentMode": "continuous",
+      "nullHandling": "skip",
+      "downsamplingMethod": "lttb",
+      "maxPoints": 2000
+    }
+  },
+  "layoutType": "quad",
+  "gridDimensions": {
+    "rows": 2,
+    "cols": 2
+  },
+  "panels": {
+    "panel-1": {
+      "id": "panel-1",
+      "name": "View 1",
+      "selectedRunPaths": [],
+      "selectedSegmentPaths": [
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-0",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-1",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-2",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-3",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-4",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-5",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-6",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-7",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-8",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-9",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-10",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-11",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-12",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-13",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-14",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-15",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-16",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-17",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-18",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5-FW01.csv:segment-19"
+      ],
+      "selectedSliceIds": [],
+      "selectedSliceCollectionIds": [],
+      "chartConfig": {
+        "xAxis": {
+          "column": "time",
+          "scaleType": "linear",
+          "autoRange": true,
+          "min": null,
+          "max": null,
+          "labelFormat": "decimal1",
+          "label": "Time (s)",
+          "showAxis": true,
+          "cursorSnapEnabled": true,
+          "cursorSnapInterval": 0.1
+        },
+        "yAxis": {
+          "column": "thrust",
+          "scaleType": "linear",
+          "autoRange": true,
+          "min": null,
+          "max": null,
+          "labelFormat": "decimal2",
+          "label": "Thrust (g)",
+          "showAxis": true,
+          "cursorSnapEnabled": false,
+          "cursorSnapInterval": 1
+        },
+        "y2Axis": {
+          "enabled": false,
+          "column": "current",
+          "scaleType": "linear",
+          "autoRange": true,
+          "min": null,
+          "max": null,
+          "labelFormat": "decimal2",
+          "label": "Current (A)",
+          "showAxis": true,
+          "cursorSnapEnabled": false,
+          "cursorSnapInterval": 1
+        },
+        "display": {
+          "showGridX": true,
+          "showGridY": true,
+          "gridStyle": "solid",
+          "gridOpacity": 60,
+          "gridIntervalX": null,
+          "gridIntervalY": null,
+          "legendPosition": "bottom",
+          "legendLive": true,
+          "tooltipMode": "nearest",
+          "showCrosshair": true,
+          "showCursorMarkers": true,
+          "cursorMarkerSize": 4,
+          "zoomMode": "xy",
+          "backgroundColor": "#1e1e1e"
+        },
+        "data": {
+          "duplicateColumnHandling": "last",
+          "segmentMode": "continuous",
+          "nullHandling": "skip",
+          "downsamplingMethod": "lttb",
+          "maxPoints": 2000
+        },
+        "seriesConfigsByPath": {}
+      },
+      "gridArea": {
+        "rowStart": 1,
+        "rowEnd": 2,
+        "colStart": 1,
+        "colEnd": 2
+      }
+    },
+    "panel-2": {
+      "id": "panel-2",
+      "name": "View 2",
+      "selectedRunPaths": [],
+      "selectedSegmentPaths": [
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-0",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-1",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-2",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-3",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-4",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-5",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-6",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-7",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-8",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-9",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-10",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-11",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-12",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-13",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-14",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-15",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-16",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-17",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-18",
+        "C:\\Users\\emill\\Documents\\GitHub\\thruster-viewer\\data\\t500 baseline test - 2026-01-20\\T5X-FW02.csv:segment-19"
+      ],
+      "selectedSliceIds": [],
+      "selectedSliceCollectionIds": [],
+      "chartConfig": {
+        "xAxis": {
+          "column": "time",
+          "scaleType": "linear",
+          "autoRange": true,
+          "min": null,
+          "max": null,
+          "labelFormat": "decimal1",
+          "label": "Time (s)",
+          "showAxis": true,
+          "cursorSnapEnabled": true,
+          "cursorSnapInterval": 0.1
+        },
+        "yAxis": {
+          "column": "thrust",
+          "scaleType": "linear",
+          "autoRange": true,
+          "min": null,
+          "max": null,
+          "labelFormat": "decimal2",
+          "label": "Thrust (g)",
+          "showAxis": true,
+          "cursorSnapEnabled": false,
+          "cursorSnapInterval": 1
+        },
+        "y2Axis": {
+          "enabled": false,
+          "column": "current",
+          "scaleType": "linear",
+          "autoRange": true,
+          "min": null,
+          "max": null,
+          "labelFormat": "decimal2",
+          "label": "Current (A)",
+          "showAxis": true,
+          "cursorSnapEnabled": false,
+          "cursorSnapInterval": 1
+        },
+        "display": {
+          "showGridX": true,
+          "showGridY": true,
+          "gridStyle": "solid",
+          "gridOpacity": 60,
+          "gridIntervalX": null,
+          "gridIntervalY": null,
+          "legendPosition": "bottom",
+          "legendLive": true,
+          "tooltipMode": "nearest",
+          "showCrosshair": true,
+          "showCursorMarkers": true,
+          "cursorMarkerSize": 4,
+          "zoomMode": "xy",
+          "backgroundColor": "#1e1e1e"
+        },
+        "data": {
+          "duplicateColumnHandling": "last",
+          "segmentMode": "continuous",
+          "nullHandling": "skip",
+          "downsamplingMethod": "lttb",
+          "maxPoints": 2000
+        },
+        "seriesConfigsByPath": {}
+      },
+      "gridArea": {
+        "rowStart": 1,
+        "rowEnd": 2,
+        "colStart": 2,
+        "colEnd": 3
+      }
+    },
+    "panel-3": {
+      "id": "panel-3",
+      "name": "View 3",
+      "selectedRunPaths": [],
+      "selectedSegmentPaths": [],
+      "selectedSliceIds": [
+        "slice-1769110475923"
+      ],
+      "selectedSliceCollectionIds": [
+        "collection-1769034333747",
+        "collection-1769106151541",
+        "collection-1769110475923"
+      ],
+      "chartConfig": {
+        "xAxis": {
+          "column": "thrust",
+          "scaleType": "linear",
+          "autoRange": true,
+          "min": null,
+          "max": null,
+          "labelFormat": "decimal1",
+          "label": "Thrust (g)",
+          "showAxis": true,
+          "cursorSnapEnabled": true,
+          "cursorSnapInterval": 100
+        },
+        "yAxis": {
+          "column": "efficiency",
+          "scaleType": "linear",
+          "autoRange": true,
+          "min": null,
+          "max": null,
+          "labelFormat": "decimal2",
+          "label": "Efficiency (g/W)",
+          "showAxis": true,
+          "cursorSnapEnabled": false,
+          "cursorSnapInterval": 1
+        },
+        "y2Axis": {
+          "enabled": false,
+          "column": "current",
+          "scaleType": "linear",
+          "autoRange": true,
+          "min": null,
+          "max": null,
+          "labelFormat": "decimal2",
+          "label": "Current (A)",
+          "showAxis": true,
+          "cursorSnapEnabled": false,
+          "cursorSnapInterval": 1
+        },
+        "display": {
+          "showGridX": true,
+          "showGridY": true,
+          "gridStyle": "solid",
+          "gridOpacity": 60,
+          "gridIntervalX": null,
+          "gridIntervalY": null,
+          "legendPosition": "bottom",
+          "legendLive": true,
+          "tooltipMode": "nearest",
+          "showCrosshair": true,
+          "showCursorMarkers": true,
+          "cursorMarkerSize": 4,
+          "zoomMode": "xy",
+          "backgroundColor": "#1e1e1e"
+        },
+        "data": {
+          "duplicateColumnHandling": "last",
+          "segmentMode": "continuous",
+          "nullHandling": "skip",
+          "downsamplingMethod": "lttb",
+          "maxPoints": 2000
+        },
+        "seriesConfigsByPath": {}
+      },
+      "gridArea": {
+        "rowStart": 2,
+        "rowEnd": 3,
+        "colStart": 1,
+        "colEnd": 2
+      }
+    },
+    "panel-4": {
+      "id": "panel-4",
+      "name": "View 4",
+      "selectedRunPaths": [],
+      "selectedSegmentPaths": [],
+      "selectedSliceIds": [],
+      "selectedSliceCollectionIds": [],
+      "chartConfig": {
+        "xAxis": {
+          "column": "time",
+          "scaleType": "linear",
+          "autoRange": true,
+          "min": null,
+          "max": null,
+          "labelFormat": "decimal1",
+          "label": "Time (s)",
+          "showAxis": true,
+          "cursorSnapEnabled": true,
+          "cursorSnapInterval": 0.1
+        },
+        "yAxis": {
+          "column": "thrust",
+          "scaleType": "linear",
+          "autoRange": true,
+          "min": null,
+          "max": null,
+          "labelFormat": "decimal2",
+          "label": "Thrust (g)",
+          "showAxis": true,
+          "cursorSnapEnabled": false,
+          "cursorSnapInterval": 1
+        },
+        "y2Axis": {
+          "enabled": false,
+          "column": "current",
+          "scaleType": "linear",
+          "autoRange": true,
+          "min": null,
+          "max": null,
+          "labelFormat": "decimal2",
+          "label": "Current (A)",
+          "showAxis": true,
+          "cursorSnapEnabled": false,
+          "cursorSnapInterval": 1
+        },
+        "display": {
+          "showGridX": true,
+          "showGridY": true,
+          "gridStyle": "solid",
+          "gridOpacity": 60,
+          "gridIntervalX": null,
+          "gridIntervalY": null,
+          "legendPosition": "bottom",
+          "legendLive": true,
+          "tooltipMode": "nearest",
+          "showCrosshair": true,
+          "showCursorMarkers": true,
+          "cursorMarkerSize": 4,
+          "zoomMode": "xy",
+          "backgroundColor": "#1e1e1e"
+        },
+        "data": {
+          "duplicateColumnHandling": "last",
+          "segmentMode": "continuous",
+          "nullHandling": "skip",
+          "downsamplingMethod": "lttb",
+          "maxPoints": 2000
+        },
+        "seriesConfigsByPath": {}
+      },
+      "gridArea": {
+        "rowStart": 2,
+        "rowEnd": 3,
+        "colStart": 2,
+        "colEnd": 3
+      }
+    }
+  },
+  "activePanelId": "panel-1",
+  "viewPresets": [],
+  "sliceCollections": [],
+  "selectedSliceCollectionIds": [],
+  "ui": {
+    "sidebarVisible": true,
+    "sidebarWidth": 500,
+    "activeView": "series",
+    "inspectorPanelHeight": 250
+  }
+}

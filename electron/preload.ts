@@ -15,9 +15,44 @@ interface LoadResult {
   canceled?: boolean
 }
 
+interface FolderSelectResult {
+  success: boolean
+  folderPath?: string
+  canceled?: boolean
+  error?: string
+}
+
+interface TestRunMetadata {
+  id: string
+  name: string
+  filePath: string
+}
+
+interface TestSessionMetadata {
+  id: string
+  name: string
+  folderPath: string
+  runs: TestRunMetadata[]
+}
+
+interface ScanDataFolderResult {
+  success: boolean
+  sessions?: TestSessionMetadata[]
+  error?: string
+}
+
+interface ReadCSVResult {
+  success: boolean
+  content?: string
+  error?: string
+}
+
 contextBridge.exposeInMainWorld('electronAPI', {
   getVersion: () => ipcRenderer.invoke('app:get-version'),
   getPlatform: () => ipcRenderer.invoke('app:get-platform'),
+  
+  // Console logging to main process
+  log: (...args: unknown[]) => ipcRenderer.send('console:log', ...args),
 
   minimize: () => ipcRenderer.send('window:minimize'),
   maximize: () => ipcRenderer.send('window:maximize'),
@@ -30,6 +65,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadConfig: () => ipcRenderer.invoke('dialog:load-config'),
   loadRecentFile: (filePath: string) => ipcRenderer.invoke('dialog:load-recent-file', filePath),
   exportResults: (data: string) => ipcRenderer.invoke('dialog:export-results', data),
+
+  // Data folder operations
+  selectDataFolder: () => ipcRenderer.invoke('dialog:select-data-folder'),
+  scanDataFolder: (folderPath: string) => ipcRenderer.invoke('fs:scan-data-folder', folderPath),
+  readCSV: (filePath: string) => ipcRenderer.invoke('fs:read-csv', filePath),
 
   onMenuEvent: (callback: (event: string) => void) => {
     const events = [
@@ -57,6 +97,7 @@ declare global {
     electronAPI: {
       getVersion: () => Promise<string>
       getPlatform: () => Promise<string>
+      log: (...args: unknown[]) => void
       minimize: () => void
       maximize: () => void
       close: () => void
@@ -66,6 +107,10 @@ declare global {
       loadConfig: () => Promise<LoadResult>
       loadRecentFile: (filePath: string) => Promise<LoadResult>
       exportResults: (data: string) => Promise<SaveResult>
+      // Data folder operations
+      selectDataFolder: () => Promise<FolderSelectResult>
+      scanDataFolder: (folderPath: string) => Promise<ScanDataFolderResult>
+      readCSV: (filePath: string) => Promise<ReadCSVResult>
       onMenuEvent: (callback: (event: string) => void) => () => void
     }
   }

@@ -196,3 +196,107 @@ input:focus, textarea:focus, select:focus {
   min-width: 40px;
 }
 
+/* ============================================================================
+   uPlot Dark Theme Overrides
+   ============================================================================ */
+
+.uplot {
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Canvas background - u-under is below the plot, u-over is above */
+/* Only set background on u-under, u-over must be transparent to show lines */
+.uplot .u-under {
+  background: var(--vsc-bg) !important;
+}
+
+.uplot .u-over {
+  background: transparent !important;
+}
+
+/* Legend styling */
+.uplot .u-legend {
+  background: var(--vsc-bg-dark);
+  border: 1px solid var(--vsc-border);
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.uplot .u-legend .u-series {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+}
+
+.uplot .u-legend .u-series th {
+  color: var(--vsc-fg-dim);
+  font-weight: normal;
+  padding: 0;
+}
+
+.uplot .u-legend .u-series td {
+  color: var(--vsc-fg);
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 11px;
+  padding: 0 4px;
+}
+
+.uplot .u-legend .u-marker {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+/* Cursor crosshair */
+.uplot .u-cursor-x,
+.uplot .u-cursor-y {
+  border-color: var(--vsc-fg-muted) !important;
+  border-style: dashed !important;
+}
+
+/* Cursor points on each series line */
+.uplot .u-cursor-pt {
+  border-radius: 50% !important;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.5) !important;
+  z-index: 100 !important;
+}
+
+/* Tooltip (cursor legend) */
+.uplot .u-legend.u-inline {
+  background: var(--vsc-bg-dark);
+  border: 1px solid var(--vsc-border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.uplot .u-legend.u-inline td {
+  padding: 1px 4px;
+}
+
+/* Axis labels */
+.uplot .u-axis {
+  color: var(--vsc-fg-dim);
+}
+
+/* Selection box (zoom) */
+.uplot .u-select {
+  background: var(--vsc-selection) !important;
+  border: 1px solid var(--vsc-accent) !important;
+}
+
+/* Hide series when inactive */
+.uplot .u-series.u-off > * {
+  opacity: 0.3;
+}
+
+/* Hover states for legend items */
+.uplot .u-legend .u-series:hover {
+  background: var(--vsc-highlight);
+  border-radius: 2px;
+}
+
